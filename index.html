@@ -338,10 +338,8 @@
         ]
       },
       {
-        id: '09',
-        name: 'Phước Long',
-        sector: 'Север',
-        color: '#e74c3c',
+        id: '09', name: 'Vĩnh An', sector: 'Север',
+        color: '#d35400',
         coords: [
           [12.2590432, 109.1891952],
           [12.2609310, 109.1903566],
@@ -363,10 +361,486 @@
     ];
 
     // ============================================================
-    // ОСТАЛЬНОЙ КОД (КАРТА, СОСТОЯНИЕ, ОТРИСОВКА)
+    // СОСТОЯНИЕ
     // ============================================================
-    // ... полный код с функциями как в предыдущей версии
-    // (здесь он был бы полностью, но для краткости я оставляю ссылку на полный код)
+    let highlightedZone = null;
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem('runningGameState');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          zonesData.forEach(z => {
+            const found = parsed.find(p => p.id === z.id);
+            if (found) {
+              z.capturedAt = found.capturedAt;
+              z.owner = found.owner || 'me';
+            }
+          });
+        }
+      } catch (e) {}
+    }
+
+    function saveState() {
+      try {
+        const state = zonesData.map(z => ({
+          id: z.id,
+          capturedAt: z.capturedAt || null,
+          owner: z.owner || null
+        }));
+        localStorage.setItem('runningGameState', JSON.stringify(state));
+      } catch (e) {}
+    }
+
+    // ============================================================
+    // КАРТА
+    // ============================================================
+    const map = L.map('map', {
+      center: [12.280, 109.208],
+      zoom: 14,
+      zoomControl: true
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // ============================================================
+    // СОСТОЯНИЕ
+    // ============================================================
+    let capturedZones = new Set();
+    let isRunning = false;
+    let route = [];
+    let watchId = null;
+    let polyline = null;
+    let zoneLayers = [];
+    let labelLayers = [];
+    let leaderboardVisible = true;
+
+    const zoneCountSpan = document.getElementById('zoneCount');
+    const capturedCountSpan = document.getElementById('capturedCount');
+    const totalPointsSpan = document.getElementById('totalPoints');
+    const statsContent = document.getElementById('statsContent');
+    const actionBtn = document.getElementById('actionBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const lbContent = document.getElementById('lbContent');
+    const leaderboardToggle = document.getElementById('leaderboardToggle');
+    const leaderboardEl = document.getElementById('leaderboard');
+
+    leaderboardToggle.addEventListener('click', () => {
+      leaderboardVisible = !leaderboardVisible;
+      leaderboardEl.style.display = leaderboardVisible ? 'block' : 'none';
+    });
+
+    // ============================================================
+    // ТУРНИРНАЯ ТАБЛИЦА
+    // ============================================================
+    function updateLeaderboard() {
+      const players = {};
+      
+      zonesData.forEach(z => {
+        if (z.owner && z.capturedAt) {
+          const owner = z.owner;
+          if (!players[owner]) {
+            players[owner] = { name: owner, zones: 0, points: 0 };
+          }
+          players[owner].zones += 1;
+          players[owner].points += getPoints(z);
+        }
+      });
+
+      const me = 'me';
+      const myZones = zonesData.filter(z => z.owner === 'me' && z.capturedAt);
+      if (!players[me] && myZones.length > 0) {
+        players[me] = { name: 'Ты', zones: 0, points: 0 };
+      }
+      if (players[me]) {
+        players[me].zones = myZones.length;
+        players[me].points = myZones.reduce((sum, z) => sum + getPoints(z), 0);
+        players[me].name = 'Ты';
+      }
+
+      const sorted = Object.values(players)
+        .filter(p => p.zones > 0 || p.points > 0)
+        .sort((a, b) => b.points - a.points || b.zones - a.zones);
+
+      if (sorted.length === 0) {
+        lbContent.innerHTML = '<div class="empty">Нет игроков</div>';
+        return;
+      }
+
+      let html = '';
+      sorted.forEach((p, i) => {
+        const pos = i + 1;
+        let posClass = 'lb-pos';
+        if (pos === 1) posClass += ' top1';
+        else if (pos === 2) posClass += ' top2';
+        else if (pos === 3) posClass += ' top3';
+        
+        const isMe = p.name === 'Ты';
+        html += `
+          <div class="lb-item ${isMe ? 'me' : ''}">
+            <span><span class="${posClass}">#${pos}</span><span class="name">${p.name}</span></span>
+            <span class="score">${p.points}⭐ (${p.zones}з)</span>
+          </div>
+        `;
+      });
+
+      lbContent.innerHTML = html;
+    }
+
+    // ============================================================
+    // РИСОВАНИЕ ЗОН
+    // ============================================================
+    function drawZones() {
+      zoneLayers.forEach(l => map.removeLayer(l));
+      labelLayers.forEach(l => map.removeLayer(l));
+      zoneLayers = [];
+      labelLayers = [];
+
+      zonesData.forEach((zone) => {
+        const isMine = zone.owner === 'me';
+        const isCaptured = !!zone.capturedAt;
+        const protected_ = isProtected(zone);
+        const perimeter = calcPerimeter(zone.coords);
+        const points = getPoints(zone);
+        const isHighlighted = highlightedZone === zone.id;
+        const color = zone.color || (isMine ? (protected_ ? '#2ecc71' : '#f1c40f') : '#e74c3c');
+
+        let fillColor, fillOpacity, weight, labelClass, dashArray;
+
+        if (!isCaptured) {
+          fillColor = 'rgba(100,100,100,0.05)';
+          fillOpacity = 0.05;
+          weight = isHighlighted ? 5 : 2;
+          labelClass = 'free';
+          dashArray = '5, 5';
+        } else if (isMine) {
+          if (protected_) {
+            fillColor = isHighlighted ? 'rgba(46,204,113,0.5)' : 'rgba(46,204,113,0.25)';
+            fillOpacity = isHighlighted ? 0.5 : 0.25;
+            weight = isHighlighted ? 6 : 4;
+            labelClass = 'captured';
+            dashArray = null;
+          } else {
+            fillColor = isHighlighted ? 'rgba(241,196,15,0.5)' : 'rgba(241,196,15,0.25)';
+            fillOpacity = isHighlighted ? 0.5 : 0.25;
+            weight = isHighlighted ? 6 : 4;
+            labelClass = 'vulnerable';
+            dashArray = null;
+          }
+        } else {
+          fillColor = isHighlighted ? 'rgba(231,76,60,0.4)' : 'rgba(231,76,60,0.2)';
+          fillOpacity = isHighlighted ? 0.4 : 0.2;
+          weight = isHighlighted ? 5 : 3;
+          labelClass = 'other';
+          dashArray = null;
+        }
+
+        const polygon = L.polygon(zone.coords, {
+          color: color,
+          weight: weight,
+          opacity: isHighlighted ? 1 : 0.9,
+          fillColor: fillColor,
+          fillOpacity: fillOpacity,
+          interactive: true,
+          smoothFactor: 1,
+          dashArray: dashArray,
+          className: isHighlighted ? 'highlighted-zone' : ''
+        });
+
+        polygon.bindPopup(`
+          <b>🏛️ Зона ${zone.id}</b><br>
+          ${zone.name}<br>
+          📍 ${zone.sector}<br>
+          📏 Периметр: ${perimeter} м<br>
+          ${isCaptured ? `👤 Владелец: ${isMine ? 'Ты' : 'Другой игрок'}` : '⬜ Свободна'}<br>
+          ${isCaptured ? `🛡️ ${protected_ ? '✅ Защищена' : '⚠️ Уязвима'}` : ''}<br>
+          ${isCaptured && isMine ? `⭐ Очков: ${points}` : ''}
+          ${!isCaptured ? '🏃 Нажми СТАРТ, чтобы захватить!' : ''}
+        `);
+
+        polygon.on('click', () => {
+          if (highlightedZone === zone.id) {
+            highlightedZone = null;
+          } else {
+            highlightedZone = zone.id;
+          }
+          drawZones();
+
+          let statusText = '';
+          if (!isCaptured) {
+            statusText = '⬜ Свободна';
+          } else if (isMine && protected_) {
+            statusText = '🛡️ Защищена';
+          } else if (isMine && !protected_) {
+            statusText = '⚠️ Уязвима';
+          } else {
+            statusText = '👤 Занята другим игроком';
+          }
+
+          statsContent.innerHTML = `
+            <div class="stat-item">🏛️ Зона ${zone.id}</div>
+            <div class="stat-item">📍 ${zone.name}</div>
+            <div class="stat-item">📐 Сектор: ${zone.sector}</div>
+            <div class="stat-item">📏 Периметр: ${perimeter} м</div>
+            <div class="stat-item" style="border-bottom:none;color:${isCaptured ? (isMine ? (protected_ ? '#2ecc71' : '#f1c40f') : '#e74c3c') : '#888'};">
+              ${statusText}
+            </div>
+            ${isCaptured && isMine ? `<div class="stat-item" style="border-bottom:none;color:#f1c40f;">⭐ Очков: ${points}</div>` : ''}
+          `;
+        });
+
+        polygon.addTo(map);
+        zoneLayers.push(polygon);
+
+        const center = zone.coords.reduce(
+          (acc, p) => [acc[0] + p[0] / zone.coords.length, acc[1] + p[1] / zone.coords.length],
+          [0, 0]
+        );
+
+        let labelHtml = zone.id;
+        if (isCaptured && isMine && protected_) {
+          labelHtml += ' 🔒';
+        } else if (isCaptured && isMine && !protected_) {
+          labelHtml += ' ⚠️';
+        } else if (isCaptured && !isMine) {
+          labelHtml += ' 🔴';
+        }
+
+        const label = L.marker(center, {
+          icon: L.divIcon({
+            className: `zone-label ${labelClass}`,
+            html: labelHtml,
+            iconSize: [50, 34],
+            iconAnchor: [25, 17]
+          }),
+          interactive: false
+        });
+        label.addTo(map);
+        labelLayers.push(label);
+      });
+
+      updateUI();
+      updateLeaderboard();
+    }
+
+    // ============================================================
+    // ПРОВЕРКА ОТБОРА
+    // ============================================================
+    function checkSteal(zone, points) {
+      if (zone.owner === 'me') return false;
+      if (!zone.capturedAt) return false;
+      if (isProtected(zone)) return false;
+      if (points.length < 5) return false;
+
+      const perimeter = calcPerimeter(zone.coords);
+      if (perimeter === 0) return false;
+
+      let covered = 0;
+      for (let i = 0; i < points.length; i++) {
+        const p = points[i];
+        let minDist = Infinity;
+        for (let j = 0; j < zone.coords.length; j++) {
+          const d = map.distance(p, zone.coords[j]);
+          if (d < minDist) minDist = d;
+        }
+        if (minDist < 20) {
+          covered++;
+        }
+      }
+
+      const coverage = covered / points.length;
+      return coverage >= STEAL_THRESHOLD;
+    }
+
+    // ============================================================
+    // ЗАХВАТ ЗОНЫ
+    // ============================================================
+    function captureZone(zoneId) {
+      const zone = zonesData.find(z => z.id === zoneId);
+      if (!zone) return;
+
+      if (zone.capturedAt) {
+        if (zone.owner === 'me') {
+          alert('❌ Это твоя зона!');
+          return;
+        }
+        if (isProtected(zone)) {
+          alert('🛡️ Зона защищена! Подожди 24 часа.');
+          return;
+        }
+        if (route.length < 5) {
+          alert('❌ Слишком короткий маршрут для отбора');
+          return;
+        }
+        if (!checkSteal(zone, route)) {
+          alert('❌ Нужно пробежать ≥ 80% периметра зоны!');
+          return;
+        }
+        alert(`✅ Зона ${zone.id} отобрана!`);
+      } else {
+        alert(`✅ Зона ${zone.id} захвачена!`);
+      }
+
+      zone.capturedAt = Date.now();
+      zone.owner = 'me';
+      capturedZones.add(zone.id);
+      saveState();
+      highlightedZone = zone.id;
+      drawZones();
+      updateUI();
+    }
+
+    // ============================================================
+    // ОБНОВЛЕНИЕ UI
+    // ============================================================
+    function updateUI() {
+      const total = zonesData.length;
+      const captured = zonesData.filter(z => z.owner === 'me').length;
+      const totalPoints = zonesData
+        .filter(z => z.owner === 'me')
+        .reduce((sum, z) => sum + getPoints(z), 0);
+
+      zoneCountSpan.textContent = `🏛️ Зон: ${captured}/${total}`;
+      capturedCountSpan.textContent = `✅ Захвачено: ${captured}`;
+      totalPointsSpan.textContent = `⭐ Очков: ${totalPoints}`;
+    }
+
+    // ============================================================
+    // БЕГ
+    // ============================================================
+    function startRun() {
+      route = [];
+      isRunning = true;
+      actionBtn.textContent = '⏹ СТОП';
+      actionBtn.className = 'stop-btn';
+      if (polyline) { map.removeLayer(polyline); polyline = null; }
+
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          route.push([pos.coords.latitude, pos.coords.longitude]);
+          updateUI();
+        },
+        () => {},
+        { enableHighAccuracy: true }
+      );
+
+      watchId = navigator.geolocation.watchPosition(
+        pos => {
+          const p = [pos.coords.latitude, pos.coords.longitude];
+          route.push(p);
+          if (polyline) map.removeLayer(polyline);
+          polyline = L.polyline(route, { color: '#e74c3c', weight: 4, opacity: 0.9 }).addTo(map);
+          map.setView(p, 15);
+          updateUI();
+        },
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 2000 }
+      );
+    }
+
+    function stopRun() {
+      if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+      isRunning = false;
+      actionBtn.textContent = '🏃 СТАРТ';
+      actionBtn.className = '';
+
+      if (route.length < 5) {
+        alert('❌ Слишком короткий маршрут');
+        return;
+      }
+
+      const first = route[0];
+      const last = route[route.length - 1];
+      if (map.distance(first, last) < 50) {
+        let captured = false;
+        for (const zone of zonesData) {
+          if (zone.owner === 'me') continue;
+          const center = zone.coords.reduce(
+            (acc, p) => [acc[0] + p[0] / zone.coords.length, acc[1] + p[1] / zone.coords.length],
+            [0, 0]
+          );
+          if (pointInPolygon(center, route)) {
+            captureZone(zone.id);
+            captured = true;
+            break;
+          }
+        }
+        if (!captured) {
+          alert('❌ Маршрут не захватил ни одной зоны');
+        }
+      } else {
+        alert('❌ Маршрут не замкнут! Вернись в старт (< 50 м)');
+      }
+
+      updateUI();
+    }
+
+    function pointInPolygon(point, polygon) {
+      let inside = false;
+      const x = point[1], y = point[0];
+      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const xi = polygon[i][1], yi = polygon[i][0];
+        const xj = polygon[j][1], yj = polygon[j][0];
+        const intersect = ((yi > y) !== (yj > y)) &&
+          (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function resetGame() {
+      if (isRunning) {
+        if (watchId) navigator.geolocation.clearWatch(watchId);
+        isRunning = false;
+        actionBtn.textContent = '🏃 СТАРТ';
+        actionBtn.className = '';
+      }
+      if (confirm('Сбросить все зоны?')) {
+        zonesData.forEach(z => {
+          z.capturedAt = null;
+          z.owner = null;
+        });
+        capturedZones.clear();
+        route = [];
+        highlightedZone = null;
+        if (polyline) { map.removeLayer(polyline); polyline = null; }
+        saveState();
+        drawZones();
+        updateUI();
+        statsContent.innerHTML = '⬜ Кликни на зону';
+      }
+    }
+
+    // ============================================================
+    // КНОПКИ
+    // ============================================================
+    actionBtn.addEventListener('click', () => isRunning ? stopRun() : startRun());
+    resetBtn.addEventListener('click', resetGame);
+
+    // ============================================================
+    // ГЕОЛОКАЦИЯ
+    // ============================================================
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+          L.marker([pos.coords.latitude, pos.coords.longitude])
+            .addTo(map)
+            .bindPopup('📍 Вы здесь');
+        },
+        () => {},
+        { enableHighAccuracy: true }
+      );
+    }
+
+    // ============================================================
+    // ЗАПУСК
+    // ============================================================
+    loadState();
+    drawZones();
+    console.log('🏃 9 зон — зона 09 добавлена');
   </script>
 </body>
 </html>
