@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>🏃 Нячанг — Зоны (Север)</title>
+  <title>🏃 Нячанг — Зоны</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -116,7 +116,7 @@
   <div id="map"></div>
 
   <div class="info-panel" id="infoPanel">
-    <span id="zoneCount">🏛️ Зон: 0/3</span>
+    <span id="zoneCount">🏛️ Зон: 0/4</span>
     <span id="capturedCount">✅ Захвачено: 0</span>
     <span id="totalDistance">📏 Всего: 0 м</span>
   </div>
@@ -147,7 +147,7 @@
     }
 
     // ============================================================
-    // 3 ЗОНЫ — ВСЕ В СЕВЕРНОМ СЕКТОРЕ
+    // 4 ЗОНЫ — ВСЕ В СЕВЕРНОМ СЕКТОРЕ
     // ============================================================
     const zonesData = [
       {
@@ -210,6 +210,23 @@
           [12.2978892, 109.2080789],
           [12.2922718, 109.2081903]
         ]
+      },
+      {
+        id: '04',
+        name: 'Vĩnh Trường',
+        sector: 'Север',
+        color: '#1abc9c',
+        coords: [
+          [12.2895295, 109.2063285],
+          [12.2902070, 109.2051047],
+          [12.2901680, 109.2047996],
+          [12.2899577, 109.2045381],
+          [12.2892216, 109.2041542],
+          [12.2884819, 109.2037324],
+          [12.2883554, 109.1967339],
+          [12.2824321, 109.1967758],
+          [12.2822595, 109.2030605]
+        ]
       }
     ];
 
@@ -217,8 +234,8 @@
     // КАРТА
     // ============================================================
     const map = L.map('map', {
-      center: [12.296, 109.216],
-      zoom: 15,
+      center: [12.290, 109.210],
+      zoom: 14,
       zoomControl: true
     });
 
@@ -380,7 +397,7 @@
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         pos => {
-          map.setView([pos.coords.latitude, pos.coords.longitude], 15);
+          map.setView([pos.coords.latitude, pos.coords.longitude], 14);
           L.marker([pos.coords.latitude, pos.coords.longitude])
             .addTo(map)
             .bindPopup('📍 Вы здесь');
@@ -394,7 +411,7 @@
     // ЗАПУСК
     // ============================================================
     drawZones();
-    console.log('🏃 3 зоны — все в Северном секторе');
+    console.log('🏃 4 зоны — все замкнуты!');
   </script>
 </body>
 </html>
