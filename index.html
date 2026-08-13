@@ -121,6 +121,7 @@
       padding: 20px 40px;
       border-radius: 16px;
       border: 1px solid rgba(255,255,255,0.1);
+      text-align: center;
     }
   </style>
 </head>
@@ -145,15 +146,11 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // ============================================================
-    // ЗАГРУЗКА РЕАЛЬНЫХ ГРАНИЦ ИЗ GEOJSON
-    // ============================================================
     const loading = document.getElementById('loading');
     const infoPanel = document.getElementById('infoPanel');
     const statsPanel = document.getElementById('statsPanel');
     const controls = document.getElementById('controls');
 
-    // Карта
     const map = L.map('map', {
       center: [12.250, 109.210],
       zoom: 13,
@@ -164,9 +161,6 @@
       attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // ============================================================
-    // СОСТОЯНИЕ
-    // ============================================================
     let capturedZones = new Set();
     let isRunning = false;
     let route = [];
@@ -176,7 +170,6 @@
     let labelLayers = [];
     let allZones = [];
 
-    // DOM
     const pointsSpan = document.getElementById('pointsCount');
     const distanceSpan = document.getElementById('distanceDisplay');
     const zoneCountSpan = document.getElementById('zoneCount');
@@ -195,32 +188,55 @@
         );
         const data = await response.json();
 
-        // Ищем город Нячанг (код 568)
-        const nhaTrang = data['56'].level2s.find(l => l.level2_id === '568');
+        // ПРОВЕРЯЕМ СТРУКТУРУ ДАННЫХ
+        console.log('Данные загружены:', data);
+        console.log('Ключи:', Object.keys(data));
+
+        // Находим провинцию Кханьхоа (ключ "56")
+        const province = data['56'];
+        if (!province) {
+          loading.textContent = '❌ Провинция Кханьхоа не найдена';
+          return;
+        }
+
+        // Ищем город Нячанг (level2_id === "568")
+        const nhaTrang = province.level2s ? province.level2s.find(l => l.level2_id === '568') : null;
         if (!nhaTrang) {
           loading.textContent = '❌ Город Нячанг не найден';
           return;
         }
 
-        // Извлекаем координаты районов (level3s)
-        if (!nhaTrang.level3s) {
+        // Извлекаем районы (level3s)
+        if (!nhaTrang.level3s || nhaTrang.level3s.length === 0) {
           loading.textContent = '❌ Районы не найдены';
           return;
         }
 
         allZones = nhaTrang.level3s.map((district, index) => {
-          const coords = district.coordinates[0].map(coord => [coord[1], coord[0]]);
-          const center = coords.reduce(
+          // Берём первый массив координат
+          const coordsArray = district.coordinates && district.coordinates[0] 
+            ? district.coordinates[0] 
+            : [];
+
+          // Преобразуем [lng, lat] → [lat, lng] для Leaflet
+          const coords = coordsArray.map(coord => [coord[1], coord[0]]);
+
+          // Центр района (среднее арифметическое)
+          const center = coords.length > 0 ? coords.reduce(
             (acc, p) => [acc[0] + p[0] / coords.length, acc[1] + p[1] / coords.length],
             [0, 0]
-          );
+          ) : [0, 0];
+
           return {
             id: String(index + 1).padStart(2, '0'),
-            name: district.name,
+            name: district.name || 'Район ' + String(index + 1),
             center: center,
             coords: coords
           };
         });
+
+        // Фильтруем районы без координат
+        allZones = allZones.filter(z => z.coords.length > 3);
 
         loading.textContent = `✅ Загружено ${allZones.length} районов`;
         setTimeout(() => {
@@ -233,8 +249,8 @@
         }, 500);
 
       } catch (e) {
-        loading.textContent = '❌ Ошибка загрузки: ' + e.message;
-        console.error(e);
+        loading.textContent = '❌ Ошибка: ' + e.message;
+        console.error('Ошибка загрузки:', e);
       }
     }
 
@@ -247,7 +263,7 @@
       zoneLayers = [];
       labelLayers = [];
 
-      const colors = ['#3498db','#2ecc71','#e74c3c','#f39c12','#9b59b6','#1abc9c','#e67e22','#2c3e50'];
+      const colors = ['#3498db','#2ecc71','#e74c3c','#f39c12','#9b59b6','#1abc9c','#e67e22','#2c3e50','#16a085','#c0392b','#8e44ad','#2980b9','#d35400','#27ae60','#7f8c8d'];
 
       allZones.forEach((zone, index) => {
         const isCaptured = capturedZones.has(zone.id);
@@ -256,9 +272,9 @@
         const polygon = L.polygon(zone.coords, {
           color: isCaptured ? '#2ecc71' : color,
           weight: isCaptured ? 3 : 1.5,
-          opacity: isCaptured ? 1 : 0.5,
+          opacity: isCaptured ? 1 : 0.6,
           fillColor: isCaptured ? '#2ecc71' : color,
-          fillOpacity: isCaptured ? 0.35 : 0.1,
+          fillOpacity: isCaptured ? 0.35 : 0.12,
           interactive: true,
         });
 
@@ -270,20 +286,21 @@
         polygon.addTo(map);
         zoneLayers.push(polygon);
 
-        const label = L.marker(zone.center, {
-          icon: L.divIcon({
-            className: `zone-label ${isCaptured ? 'captured' : ''}`,
-            html: zone.id,
-            iconSize: [26, 20],
-            iconAnchor: [13, 10]
-          }),
-          interactive: false
-        });
-        label.addTo(map);
-        labelLayers.push(label);
+        if (zone.center[0] !== 0 && zone.center[1] !== 0) {
+          const label = L.marker(zone.center, {
+            icon: L.divIcon({
+              className: `zone-label ${isCaptured ? 'captured' : ''}`,
+              html: zone.id,
+              iconSize: [26, 20],
+              iconAnchor: [13, 10]
+            }),
+            interactive: false
+          });
+          label.addTo(map);
+          labelLayers.push(label);
+        }
       });
 
-      // Центрируем карту по первому району
       if (allZones.length > 0) {
         map.setView(allZones[0].center, 13);
       }
@@ -453,7 +470,7 @@
       );
     }
 
-    console.log('🏃 Нячанг — Загрузка реальных границ из GeoJSON');
+    console.log('🏃 Нячанг — Загрузка реальных границ');
   </script>
 </body>
 </html>
