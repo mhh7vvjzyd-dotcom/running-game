@@ -31,6 +31,7 @@
     .badge-green { background: #2ecc71; border-radius: 20px; padding: 2px 12px; font-weight: bold; }
     .badge-yellow { background: #f1c40f; border-radius: 20px; padding: 2px 12px; font-weight: bold; color: #1a1a2e; }
     .badge-gray { background: #555; border-radius: 20px; padding: 2px 12px; }
+    .badge-red { background: #e74c3c; border-radius: 20px; padding: 2px 12px; font-weight: bold; }
     
     .controls {
       position: fixed;
@@ -103,6 +104,14 @@
       border-color: #f1c40f;
       color: #1a1a2e;
     }
+    .zone-label.other {
+      background: rgba(231,76,60,0.9);
+      border-color: #e74c3c;
+    }
+    .zone-label.free {
+      background: rgba(100,100,100,0.7);
+      border-color: #666;
+    }
   </style>
 </head>
 <body>
@@ -146,10 +155,6 @@
       return Math.round(total);
     }
 
-    function distance(p1, p2) {
-      return map.distance(p1, p2);
-    }
-
     function getDaysSince(timestamp) {
       const now = Date.now();
       const diff = now - timestamp;
@@ -178,7 +183,7 @@
     // ============================================================
     const zonesData = [
       {
-        id: '01', name: 'Vĩnh Hải', sector: 'Север', color: '#3498db',
+        id: '01', name: 'Vĩnh Hải', sector: 'Север',
         coords: [
           [12.2959054, 109.2216405], [12.2951267, 109.2177517],
           [12.2923235, 109.2125609], [12.2921000, 109.2110000],
@@ -188,7 +193,7 @@
         ]
       },
       {
-        id: '02', name: 'Vĩnh Phước', sector: 'Север', color: '#e67e22',
+        id: '02', name: 'Vĩnh Phước', sector: 'Север',
         coords: [
           [12.2962654, 109.2213002], [12.2975950, 109.2203373],
           [12.2988297, 109.2173041], [12.3000696, 109.2144103],
@@ -200,7 +205,7 @@
         ]
       },
       {
-        id: '03', name: 'Vĩnh Thọ', sector: 'Север', color: '#9b59b6',
+        id: '03', name: 'Vĩnh Thọ', sector: 'Север',
         coords: [
           [12.2914859, 109.2075150], [12.2912536, 109.2084384],
           [12.2917984, 109.2089302], [12.2922606, 109.2084846],
@@ -213,7 +218,7 @@
         ]
       },
       {
-        id: '04', name: 'Vĩnh Trường', sector: 'Север', color: '#1abc9c',
+        id: '04', name: 'Vĩnh Trường', sector: 'Север',
         coords: [
           [12.2895295, 109.2063285], [12.2902070, 109.2051047],
           [12.2901680, 109.2047996], [12.2899577, 109.2045381],
@@ -223,7 +228,7 @@
         ]
       },
       {
-        id: '05', name: 'Vĩnh Lương', sector: 'Север', color: '#e74c3c',
+        id: '05', name: 'Vĩnh Lương', sector: 'Север',
         coords: [
           [12.2884429, 109.1998902], [12.2895429, 109.1998841],
           [12.2896487, 109.1997809], [12.2897418, 109.1989205],
@@ -237,7 +242,7 @@
         ]
       },
       {
-        id: '06', name: 'Vĩnh Phương', sector: 'Север', color: '#f39c12',
+        id: '06', name: 'Vĩnh Phương', sector: 'Север',
         coords: [
           [12.2745558, 109.2022746], [12.2764559, 109.2021013],
           [12.2784956, 109.2028926], [12.2801910, 109.2026491],
@@ -247,7 +252,7 @@
         ]
       },
       {
-        id: '07', name: 'Vĩnh Thạnh', sector: 'Север', color: '#2c3e50',
+        id: '07', name: 'Vĩnh Thạnh', sector: 'Север',
         coords: [
           [12.2746085, 109.2022800], [12.2698640, 109.2057089],
           [12.2685552, 109.2058396], [12.2667588, 109.2045465],
@@ -258,7 +263,7 @@
         ]
       },
       {
-        id: '08', name: 'Vĩnh Thái', sector: 'Север', color: '#16a085',
+        id: '08', name: 'Vĩnh Thái', sector: 'Север',
         coords: [
           [12.2703839, 109.1979989], [12.2697664, 109.1990650],
           [12.2697185, 109.1993809], [12.2690600, 109.1999985],
@@ -287,7 +292,6 @@
         const saved = localStorage.getItem('runningGameState');
         if (saved) {
           const parsed = JSON.parse(saved);
-          // Восстанавливаем capturedAt как Date
           zonesData.forEach(z => {
             const found = parsed.find(p => p.id === z.id);
             if (found) {
@@ -339,7 +343,6 @@
     let polyline = null;
     let zoneLayers = [];
     let labelLayers = [];
-    let currentZoneId = null;
 
     const zoneCountSpan = document.getElementById('zoneCount');
     const capturedCountSpan = document.getElementById('capturedCount');
@@ -364,31 +367,48 @@
         const perimeter = calcPerimeter(zone.coords);
         const points = getPoints(zone);
 
-        let statusColor = zone.color;
-        let labelClass = '';
+        // Определяем цвета
+        let color, fillColor, fillOpacity, weight, labelClass;
 
         if (!isCaptured) {
-          statusColor = 'rgba(255,255,255,0.15)';
+          // Свободная зона — нейтральный контур
+          color = '#666';
+          fillColor = 'rgba(100,100,100,0.05)';
+          fillOpacity = 0.05;
+          weight = 2;
+          labelClass = 'free';
         } else if (isMine) {
           if (protected_) {
-            statusColor = '#2ecc71';
+            color = '#2ecc71';
+            fillColor = 'rgba(46,204,113,0.25)';
+            fillOpacity = 0.25;
+            weight = 4;
             labelClass = 'captured';
           } else {
-            statusColor = '#f1c40f';
+            color = '#f1c40f';
+            fillColor = 'rgba(241,196,15,0.25)';
+            fillOpacity = 0.25;
+            weight = 4;
             labelClass = 'vulnerable';
           }
         } else {
-          statusColor = '#e74c3c';
+          // Зона другого игрока
+          color = '#e74c3c';
+          fillColor = 'rgba(231,76,60,0.2)';
+          fillOpacity = 0.2;
+          weight = 3;
+          labelClass = 'other';
         }
 
         const polygon = L.polygon(zone.coords, {
-          color: statusColor,
-          weight: isCaptured ? 4 : 1.5,
-          opacity: isCaptured ? 1 : 0.3,
-          fillColor: statusColor,
-          fillOpacity: isCaptured ? 0.35 : 0.05,
+          color: color,
+          weight: weight,
+          opacity: 1,
+          fillColor: fillColor,
+          fillOpacity: fillOpacity,
           interactive: true,
-          smoothFactor: 1
+          smoothFactor: 1,
+          dashArray: !isCaptured ? '5, 5' : null // Пунктир для свободных зон
         });
 
         polygon.bindPopup(`
@@ -399,16 +419,28 @@
           ${isCaptured ? `👤 Владелец: ${isMine ? 'Ты' : 'Другой игрок'}` : '⬜ Свободна'}<br>
           ${isCaptured ? `🛡️ ${protected_ ? '✅ Защищена' : '⚠️ Уязвима'}` : ''}<br>
           ${isCaptured && isMine ? `⭐ Очков: ${points}` : ''}
+          ${!isCaptured ? '🏃 Нажми СТАРТ, чтобы захватить!' : ''}
         `);
 
         polygon.on('click', () => {
+          let statusText = '';
+          if (!isCaptured) {
+            statusText = '⬜ Свободна';
+          } else if (isMine && protected_) {
+            statusText = '🛡️ Защищена';
+          } else if (isMine && !protected_) {
+            statusText = '⚠️ Уязвима';
+          } else {
+            statusText = '👤 Занята другим игроком';
+          }
+
           statsContent.innerHTML = `
             <div class="stat-item">🏛️ Зона ${zone.id}</div>
             <div class="stat-item">📍 ${zone.name}</div>
             <div class="stat-item">📐 Сектор: ${zone.sector}</div>
             <div class="stat-item">📏 Периметр: ${perimeter} м</div>
-            <div class="stat-item" style="border-bottom:none;color:${isCaptured ? '#2ecc71' : '#f1c40f'};">
-              ${isCaptured ? (protected_ ? '🛡️ Защищена' : '⚠️ Уязвима') : '⬜ Свободна'}
+            <div class="stat-item" style="border-bottom:none;color:${isCaptured ? (isMine ? (protected_ ? '#2ecc71' : '#f1c40f') : '#e74c3c') : '#888'};">
+              ${statusText}
             </div>
             ${isCaptured && isMine ? `<div class="stat-item" style="border-bottom:none;color:#f1c40f;">⭐ Очков: ${points}</div>` : ''}
           `;
@@ -417,6 +449,7 @@
         polygon.addTo(map);
         zoneLayers.push(polygon);
 
+        // Центр зоны для метки
         const center = zone.coords.reduce(
           (acc, p) => [acc[0] + p[0] / zone.coords.length, acc[1] + p[1] / zone.coords.length],
           [0, 0]
@@ -427,6 +460,8 @@
           labelHtml += ' 🔒';
         } else if (isCaptured && isMine && !protected_) {
           labelHtml += ' ⚠️';
+        } else if (isCaptured && !isMine) {
+          labelHtml += ' 🔴';
         }
 
         const label = L.marker(center, {
@@ -461,13 +496,11 @@
       let covered = 0;
       for (let i = 0; i < points.length; i++) {
         const p = points[i];
-        // Находим ближайшую точку на границе зоны
         let minDist = Infinity;
         for (let j = 0; j < zone.coords.length; j++) {
           const d = map.distance(p, zone.coords[j]);
           if (d < minDist) minDist = d;
         }
-        // Если точка близко к границе (< 20 м), считаем её покрытой
         if (minDist < 20) {
           covered++;
         }
@@ -484,9 +517,7 @@
       const zone = zonesData.find(z => z.id === zoneId);
       if (!zone) return;
 
-      // Проверяем, свободна ли зона
       if (zone.capturedAt) {
-        // Проверяем отбор
         if (zone.owner === 'me') {
           alert('❌ Это твоя зона!');
           return;
@@ -495,7 +526,6 @@
           alert('🛡️ Зона защищена! Подожди 24 часа.');
           return;
         }
-        // Отбираем зону
         if (route.length < 5) {
           alert('❌ Слишком короткий маршрут для отбора');
           return;
@@ -506,7 +536,6 @@
         }
         alert(`✅ Зона ${zone.id} отобрана!`);
       } else {
-        // Захватываем свободную зону
         alert(`✅ Зона ${zone.id} захвачена!`);
       }
 
@@ -577,11 +606,9 @@
         return;
       }
 
-      // Проверяем замкнутость
       const first = route[0];
       const last = route[route.length - 1];
       if (map.distance(first, last) < 50) {
-        // Маршрут замкнут — ищем, какую зону захватить
         let captured = false;
         for (const zone of zonesData) {
           if (zone.owner === 'me') continue;
@@ -667,7 +694,7 @@
     // ============================================================
     loadState();
     drawZones();
-    console.log('🏃 Стратегическая игра — полный цикл');
+    console.log('🏃 Стратегическая игра — нейтральные границы');
   </script>
 </body>
 </html>
