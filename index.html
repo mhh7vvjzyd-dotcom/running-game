@@ -86,7 +86,7 @@
   <div id="map"></div>
 
   <div class="info-panel" id="infoPanel">
-    <span id="pointsCount">📍 8 точек</span>
+    <span id="pointsCount">📍 9 точек</span>
     <span id="distanceDisplay">📏 0 м</span>
     <span id="loopStatus" class="badge-green">🔒 ЗАМКНУТО</span>
   </div>
@@ -103,9 +103,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // ============================================================
-    // КАРТА НЯЧАНГА
-    // ============================================================
     const map = L.map('map', {
       center: [12.295, 109.216],
       zoom: 15,
@@ -117,12 +114,13 @@
     }).addTo(map);
 
     // ============================================================
-    // ТВОИ ТОЧКИ (В ПОРЯДКЕ ДОБАВЛЕНИЯ)
+    // ТОЧКИ (С НОВОЙ ТОЧКОЙ МЕЖДУ 3 И 4)
     // ============================================================
     const points = [
       { lat: 12.2959054, lng: 109.2216405, name: '📍 Точка 1' },
       { lat: 12.2951267, lng: 109.2177517, name: '📍 Точка 2' },
       { lat: 12.2923235, lng: 109.2125609, name: '📍 Точка 3' },
+      { lat: 12.2921000, lng: 109.2110000, name: '📍 Точка 3.5' },
       { lat: 12.2924772, lng: 109.2094382, name: '📍 Точка 4' },
       { lat: 12.2941344, lng: 109.2126608, name: '📍 Точка 5' },
       { lat: 12.2956220, lng: 109.2136707, name: '📍 Точка 6' },
@@ -130,11 +128,10 @@
       { lat: 12.2974191, lng: 109.2184759, name: '📍 Точка 8' }
     ];
 
-    // Преобразуем в формат [lat, lng] для полигона
     const polygonCoords = points.map(p => [p.lat, p.lng]);
 
     // ============================================================
-    // РИСУЕМ ПОЛИГОН (ЗАМКНУТАЯ ОБЛАСТЬ)
+    // ПОЛИГОН
     // ============================================================
     const polygon = L.polygon(polygonCoords, {
       color: '#2ecc71',
@@ -152,14 +149,13 @@
     `);
 
     // ============================================================
-    // РИСУЕМ МАРКЕРЫ
+    // МАРКЕРЫ
     // ============================================================
     points.forEach((p, index) => {
       const marker = L.marker([p.lat, p.lng])
         .addTo(map)
         .bindPopup(`<b>${p.name}</b><br>${p.lat}, ${p.lng}`);
 
-      // Подпись номера точки
       const label = L.marker([p.lat, p.lng], {
         icon: L.divIcon({
           className: 'point-label',
@@ -199,9 +195,6 @@
     const actionBtn = document.getElementById('actionBtn');
     const resetBtn = document.getElementById('resetBtn');
 
-    // ============================================================
-    // ФУНКЦИИ
-    // ============================================================
     function calcDistance(points) {
       if (points.length < 2) return 0;
       let total = 0;
@@ -239,9 +232,6 @@
       }
     }
 
-    // ============================================================
-    // УПРАВЛЕНИЕ БЕГОМ
-    // ============================================================
     function startRun() {
       route = [];
       isRunning = true;
@@ -305,15 +295,9 @@
       statsContent.textContent = 'Ожидание старта';
     }
 
-    // ============================================================
-    // КНОПКИ
-    // ============================================================
     actionBtn.addEventListener('click', () => isRunning ? stopRun() : startRun());
     resetBtn.addEventListener('click', resetGame);
 
-    // ============================================================
-    // ГЕОЛОКАЦИЯ
-    // ============================================================
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         pos => {
@@ -328,7 +312,7 @@
     }
 
     updateUI();
-    console.log('🏃 Карта Нячанга — 8 точек, полигон замкнут');
+    console.log('🏃 9 точек, граница сглажена');
   </script>
 </body>
 </html>
