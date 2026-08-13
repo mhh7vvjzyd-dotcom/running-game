@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>🏃 Нячанг — Зоны</title>
+  <title>🏃 Нячанг — Зоны (Север)</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -147,7 +147,7 @@
     }
 
     // ============================================================
-    // 3 ЗОНЫ (СЕВЕР, ЦЕНТР, ЮГ)
+    // 3 ЗОНЫ — ВСЕ В СЕВЕРНОМ СЕКТОРЕ
     // ============================================================
     const zonesData = [
       {
@@ -170,7 +170,7 @@
       {
         id: '02',
         name: 'Vĩnh Phước',
-        sector: 'Центр',
+        sector: 'Север',
         color: '#e67e22',
         coords: [
           [12.2962654, 109.2213002],
@@ -191,7 +191,7 @@
       {
         id: '03',
         name: 'Vĩnh Thọ',
-        sector: 'Юг',
+        sector: 'Север',
         color: '#9b59b6',
         coords: [
           [12.2914859, 109.2075150],
@@ -394,7 +394,7 @@
     // ЗАПУСК
     // ============================================================
     drawZones();
-    console.log('🏃 3 зоны: Север, Центр, Юг');
+    console.log('🏃 3 зоны — все в Северном секторе');
   </script>
 </body>
 </html>
