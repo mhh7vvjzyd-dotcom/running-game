@@ -196,6 +196,10 @@
     // ============================================================
     const PROTECTION_HOURS = 24;
     const STEAL_THRESHOLD = 0.8;
+    const BUFFER = 20; // 20 метров допуска от границы
+    const SPEED_MIN = 4; // мин. скорость бега км/ч
+    const SPEED_MAX = 25; // макс. скорость бега км/ч
+    const SEGMENT_SIZE = 10; // точек в сегменте для расчёта скорости
 
     // ============================================================
     // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
@@ -231,6 +235,79 @@
       if (!zone.capturedAt) return 0;
       const days = Math.floor(getDaysSince(zone.capturedAt));
       return days * 1;
+    }
+
+    // ============================================================
+    // ПРОВЕРКА СКОРОСТИ (УМНАЯ)
+    // ============================================================
+    function checkSpeed(points) {
+      if (points.length < 5) return false;
+
+      const speeds = [];
+      
+      for (let i = 0; i < points.length - SEGMENT_SIZE; i += SEGMENT_SIZE) {
+        const segment = points.slice(i, i + SEGMENT_SIZE);
+        if (segment.length < 2) continue;
+        
+        let dist = 0;
+        for (let j = 1; j < segment.length; j++) {
+          dist += map.distance(segment[j-1], segment[j]);
+        }
+        
+        // Время в часах (каждая точка примерно через 2 секунды)
+        const hours = (segment.length - 1) * 2 / 3600;
+        if (hours === 0) continue;
+        const speed = dist / 1000 / hours; // км/ч
+        
+        // Отбрасываем аномалии
+        if (speed > 2 && speed < 30) {
+          speeds.push(speed);
+        }
+      }
+      
+      if (speeds.length === 0) return false;
+      
+      // Сортируем и берём медиану
+      speeds.sort((a, b) => a - b);
+      const median = speeds[Math.floor(speeds.length / 2)];
+      
+      // Нормальная беговая скорость: 4–25 км/ч
+      return median >= SPEED_MIN && median <= SPEED_MAX;
+    }
+
+    // ============================================================
+    // ПРОВЕРКА ОТБОРА (С БУФЕРНОЙ ЗОНОЙ)
+    // ============================================================
+    function checkSteal(zone, points) {
+      if (zone.owner === 'me') return false;
+      if (!zone.capturedAt) return false;
+      if (isProtected(zone)) return false;
+      if (points.length < 5) return false;
+
+      // Проверяем скорость
+      if (!checkSpeed(points)) {
+        alert('❌ Скорость не соответствует бегу!');
+        return false;
+      }
+
+      const perimeter = calcPerimeter(zone.coords);
+      if (perimeter === 0) return false;
+
+      let covered = 0;
+      for (let i = 0; i < points.length; i++) {
+        const p = points[i];
+        let minDist = Infinity;
+        for (let j = 0; j < zone.coords.length; j++) {
+          const d = map.distance(p, zone.coords[j]);
+          if (d < minDist) minDist = d;
+        }
+        if (minDist < BUFFER) {
+          covered++;
+        }
+      }
+
+      const coverage = covered / points.length;
+      return coverage >= STEAL_THRESHOLD;
     }
 
     // ============================================================
@@ -382,7 +459,7 @@
           [12.2584764, 109.1965357]
         ]
       },
-      // Зона 11-13 — Центр
+      // Зона 11-14 — Центр
       {
         id: '11', name: 'Vĩnh Mỹ', sector: 'Центр',
         coords: [
@@ -448,7 +525,6 @@
           [12.2412270, 109.1964744]
         ]
       },
-      // Зона 14 — Центр
       {
         id: '14', name: 'Vĩnh Bảo', sector: 'Центр',
         color: '#d35400',
@@ -736,35 +812,6 @@
     }
 
     // ============================================================
-    // ПРОВЕРКА ОТБОРА
-    // ============================================================
-    function checkSteal(zone, points) {
-      if (zone.owner === 'me') return false;
-      if (!zone.capturedAt) return false;
-      if (isProtected(zone)) return false;
-      if (points.length < 5) return false;
-
-      const perimeter = calcPerimeter(zone.coords);
-      if (perimeter === 0) return false;
-
-      let covered = 0;
-      for (let i = 0; i < points.length; i++) {
-        const p = points[i];
-        let minDist = Infinity;
-        for (let j = 0; j < zone.coords.length; j++) {
-          const d = map.distance(p, zone.coords[j]);
-          if (d < minDist) minDist = d;
-        }
-        if (minDist < 20) {
-          covered++;
-        }
-      }
-
-      const coverage = covered / points.length;
-      return coverage >= STEAL_THRESHOLD;
-    }
-
-    // ============================================================
     // ЗАХВАТ ЗОНЫ
     // ============================================================
     function captureZone(zoneId) {
@@ -785,7 +832,6 @@
           return;
         }
         if (!checkSteal(zone, route)) {
-          alert('❌ Нужно пробежать ≥ 80% периметра зоны!');
           return;
         }
         alert(`✅ Зона ${zone.id} отобрана!`);
@@ -950,7 +996,7 @@
     // ============================================================
     loadState();
     drawZones();
-    console.log('🏃 14 зон — Север (10) + Центр (4)');
+    console.log('🏃 14 зон — буфер 20м, умная скорость');
   </script>
 </body>
 </html>
