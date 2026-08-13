@@ -96,19 +96,6 @@
       background: rgba(46,204,113,0.9);
       border-color: #2ecc71;
     }
-    .point-label {
-      background: rgba(0,0,0,0.7);
-      color: white;
-      border-radius: 50%;
-      width: 22px;
-      height: 22px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      font-weight: bold;
-      border: 2px solid #f1c40f;
-    }
   </style>
 </head>
 <body>
@@ -147,7 +134,7 @@
     }
 
     // ============================================================
-    // 8 ЗОН — ВСЕ В СЕВЕРНОМ СЕКТОРЕ
+    // 8 ЗОН
     // ============================================================
     const zonesData = [
       {
@@ -348,7 +335,6 @@
     let capturedZones = new Set();
     let zoneLayers = [];
     let labelLayers = [];
-    let pointLayers = [];
 
     const zoneCountSpan = document.getElementById('zoneCount');
     const capturedCountSpan = document.getElementById('capturedCount');
@@ -358,15 +344,13 @@
     const resetBtn = document.getElementById('resetBtn');
 
     // ============================================================
-    // РИСОВАНИЕ ЗОН
+    // РИСОВАНИЕ ЗОН (БЕЗ ТОЧЕК)
     // ============================================================
     function drawZones() {
       zoneLayers.forEach(l => map.removeLayer(l));
       labelLayers.forEach(l => map.removeLayer(l));
-      pointLayers.forEach(l => map.removeLayer(l));
       zoneLayers = [];
       labelLayers = [];
-      pointLayers = [];
 
       zonesData.forEach((zone) => {
         const isCaptured = capturedZones.has(zone.id);
@@ -420,21 +404,6 @@
         });
         label.addTo(map);
         labelLayers.push(label);
-
-        // ТОЧКИ С НОМЕРАМИ
-        zone.coords.forEach((p, i) => {
-          const pointMarker = L.marker(p, {
-            icon: L.divIcon({
-              className: 'point-label',
-              html: `${i + 1}`,
-              iconSize: [22, 22],
-              iconAnchor: [11, 11]
-            }),
-            interactive: false
-          });
-          pointMarker.addTo(map);
-          pointLayers.push(pointMarker);
-        });
       });
 
       updateUI();
@@ -510,7 +479,7 @@
     // ЗАПУСК
     // ============================================================
     drawZones();
-    console.log('🏃 8 зон — все замкнуты!');
+    console.log('🏃 8 зон — без точек');
   </script>
 </body>
 </html>
