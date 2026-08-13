@@ -113,10 +113,19 @@
       border-color: #666;
     }
     .zone-label.highlight {
-      box-shadow: 0 0 30px rgba(255,255,255,0.5);
+      box-shadow: 0 0 30px rgba(255,255,255,0.3);
       border-color: #fff;
-      transform: scale(1.1);
-      z-index: 999;
+    }
+
+    /* ШТРИХОВКА ДЛЯ ВЫДЕЛЕННОЙ ЗОНЫ */
+    .highlight-pattern {
+      background-image: repeating-linear-gradient(
+        45deg,
+        rgba(46, 204, 113, 0.0) 0px,
+        rgba(46, 204, 113, 0.0) 10px,
+        rgba(46, 204, 113, 0.5) 10px,
+        rgba(46, 204, 113, 0.5) 12px
+      ) !important;
     }
   </style>
 </head>
@@ -294,7 +303,6 @@
     // СОСТОЯНИЕ
     // ============================================================
     let highlightedZone = null;
-    let highlightLayer = null;
 
     function loadState() {
       try {
@@ -346,6 +354,7 @@
     let polyline = null;
     let zoneLayers = [];
     let labelLayers = [];
+    let highlightLayer = null;
 
     const zoneCountSpan = document.getElementById('zoneCount');
     const capturedCountSpan = document.getElementById('capturedCount');
@@ -360,6 +369,10 @@
     function drawZones() {
       zoneLayers.forEach(l => map.removeLayer(l));
       labelLayers.forEach(l => map.removeLayer(l));
+      if (highlightLayer) {
+        map.removeLayer(highlightLayer);
+        highlightLayer = null;
+      }
       zoneLayers = [];
       labelLayers = [];
 
@@ -371,34 +384,38 @@
         const points = getPoints(zone);
         const isHighlighted = highlightedZone === zone.id;
 
-        let color, fillColor, fillOpacity, weight, labelClass;
+        let color, fillColor, fillOpacity, weight, labelClass, dashArray;
 
         if (!isCaptured) {
-          color = isHighlighted ? '#aaa' : '#666';
-          fillColor = isHighlighted ? 'rgba(150,150,150,0.25)' : 'rgba(100,100,100,0.05)';
-          fillOpacity = isHighlighted ? 0.25 : 0.05;
-          weight = isHighlighted ? 5 : 2;
+          color = '#666';
+          fillColor = 'rgba(100,100,100,0.05)';
+          fillOpacity = 0.05;
+          weight = 2;
           labelClass = 'free';
+          dashArray = '5, 5';
         } else if (isMine) {
           if (protected_) {
-            color = isHighlighted ? '#6ee7b9' : '#2ecc71';
-            fillColor = isHighlighted ? 'rgba(46,204,113,0.5)' : 'rgba(46,204,113,0.25)';
-            fillOpacity = isHighlighted ? 0.5 : 0.25;
-            weight = isHighlighted ? 5 : 4;
+            color = '#2ecc71';
+            fillColor = 'rgba(46,204,113,0.25)';
+            fillOpacity = 0.25;
+            weight = 4;
             labelClass = 'captured';
+            dashArray = null;
           } else {
-            color = isHighlighted ? '#f5d742' : '#f1c40f';
-            fillColor = isHighlighted ? 'rgba(241,196,15,0.5)' : 'rgba(241,196,15,0.25)';
-            fillOpacity = isHighlighted ? 0.5 : 0.25;
-            weight = isHighlighted ? 5 : 4;
+            color = '#f1c40f';
+            fillColor = 'rgba(241,196,15,0.25)';
+            fillOpacity = 0.25;
+            weight = 4;
             labelClass = 'vulnerable';
+            dashArray = null;
           }
         } else {
-          color = isHighlighted ? '#ff6b6b' : '#e74c3c';
-          fillColor = isHighlighted ? 'rgba(231,76,60,0.4)' : 'rgba(231,76,60,0.2)';
-          fillOpacity = isHighlighted ? 0.4 : 0.2;
-          weight = isHighlighted ? 5 : 3;
+          color = '#e74c3c';
+          fillColor = 'rgba(231,76,60,0.2)';
+          fillOpacity = 0.2;
+          weight = 3;
           labelClass = 'other';
+          dashArray = null;
         }
 
         if (isHighlighted) {
@@ -413,8 +430,8 @@
           fillOpacity: fillOpacity,
           interactive: true,
           smoothFactor: 1,
-          dashArray: !isCaptured ? '5, 5' : null,
-          className: isHighlighted ? 'highlighted-zone' : ''
+          dashArray: dashArray,
+          className: isHighlighted ? 'highlight-pattern' : ''
         });
 
         polygon.bindPopup(`
@@ -429,7 +446,6 @@
         `);
 
         polygon.on('click', () => {
-          // Подсветка при клике
           if (highlightedZone === zone.id) {
             highlightedZone = null;
           } else {
@@ -476,16 +492,13 @@
         } else if (isCaptured && !isMine) {
           labelHtml += ' 🔴';
         }
-        if (isHighlighted) {
-          labelHtml += ' ✨';
-        }
 
         const label = L.marker(center, {
           icon: L.divIcon({
             className: `zone-label ${labelClass}`,
             html: labelHtml,
-            iconSize: [isHighlighted ? 58 : 50, isHighlighted ? 40 : 34],
-            iconAnchor: [isHighlighted ? 29 : 25, isHighlighted ? 20 : 17]
+            iconSize: [50, 34],
+            iconAnchor: [25, 17]
           }),
           interactive: false
         });
@@ -711,7 +724,7 @@
     // ============================================================
     loadState();
     drawZones();
-    console.log('🏃 Стратегическая игра — подсветка зон при клике');
+    console.log('🏃 Стратегическая игра — штриховка при клике');
   </script>
 </body>
 </html>
