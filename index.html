@@ -112,6 +112,12 @@
       background: rgba(100,100,100,0.7);
       border-color: #666;
     }
+    .zone-label.highlight {
+      box-shadow: 0 0 30px rgba(255,255,255,0.5);
+      border-color: #fff;
+      transform: scale(1.1);
+      z-index: 999;
+    }
   </style>
 </head>
 <body>
@@ -140,7 +146,7 @@
     // КОНСТАНТЫ
     // ============================================================
     const PROTECTION_HOURS = 24;
-    const STEAL_THRESHOLD = 0.8; // 80%
+    const STEAL_THRESHOLD = 0.8;
 
     // ============================================================
     // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
@@ -285,8 +291,11 @@
     ];
 
     // ============================================================
-    // СОСТОЯНИЕ (СОХРАНЕНИЕ В LOCALSTORAGE)
+    // СОСТОЯНИЕ
     // ============================================================
+    let highlightedZone = null;
+    let highlightLayer = null;
+
     function loadState() {
       try {
         const saved = localStorage.getItem('runningGameState');
@@ -299,11 +308,8 @@
               z.owner = found.owner || 'me';
             }
           });
-          console.log('✅ Состояние загружено');
         }
-      } catch (e) {
-        console.warn('⚠️ Не удалось загрузить состояние');
-      }
+      } catch (e) {}
     }
 
     function saveState() {
@@ -314,10 +320,7 @@
           owner: z.owner || null
         }));
         localStorage.setItem('runningGameState', JSON.stringify(state));
-        console.log('✅ Состояние сохранено');
-      } catch (e) {
-        console.warn('⚠️ Не удалось сохранить состояние');
-      }
+      } catch (e) {}
     }
 
     // ============================================================
@@ -366,38 +369,40 @@
         const protected_ = isProtected(zone);
         const perimeter = calcPerimeter(zone.coords);
         const points = getPoints(zone);
+        const isHighlighted = highlightedZone === zone.id;
 
-        // Определяем цвета
         let color, fillColor, fillOpacity, weight, labelClass;
 
         if (!isCaptured) {
-          // Свободная зона — нейтральный контур
-          color = '#666';
-          fillColor = 'rgba(100,100,100,0.05)';
-          fillOpacity = 0.05;
-          weight = 2;
+          color = isHighlighted ? '#aaa' : '#666';
+          fillColor = isHighlighted ? 'rgba(150,150,150,0.25)' : 'rgba(100,100,100,0.05)';
+          fillOpacity = isHighlighted ? 0.25 : 0.05;
+          weight = isHighlighted ? 5 : 2;
           labelClass = 'free';
         } else if (isMine) {
           if (protected_) {
-            color = '#2ecc71';
-            fillColor = 'rgba(46,204,113,0.25)';
-            fillOpacity = 0.25;
-            weight = 4;
+            color = isHighlighted ? '#6ee7b9' : '#2ecc71';
+            fillColor = isHighlighted ? 'rgba(46,204,113,0.5)' : 'rgba(46,204,113,0.25)';
+            fillOpacity = isHighlighted ? 0.5 : 0.25;
+            weight = isHighlighted ? 5 : 4;
             labelClass = 'captured';
           } else {
-            color = '#f1c40f';
-            fillColor = 'rgba(241,196,15,0.25)';
-            fillOpacity = 0.25;
-            weight = 4;
+            color = isHighlighted ? '#f5d742' : '#f1c40f';
+            fillColor = isHighlighted ? 'rgba(241,196,15,0.5)' : 'rgba(241,196,15,0.25)';
+            fillOpacity = isHighlighted ? 0.5 : 0.25;
+            weight = isHighlighted ? 5 : 4;
             labelClass = 'vulnerable';
           }
         } else {
-          // Зона другого игрока
-          color = '#e74c3c';
-          fillColor = 'rgba(231,76,60,0.2)';
-          fillOpacity = 0.2;
-          weight = 3;
+          color = isHighlighted ? '#ff6b6b' : '#e74c3c';
+          fillColor = isHighlighted ? 'rgba(231,76,60,0.4)' : 'rgba(231,76,60,0.2)';
+          fillOpacity = isHighlighted ? 0.4 : 0.2;
+          weight = isHighlighted ? 5 : 3;
           labelClass = 'other';
+        }
+
+        if (isHighlighted) {
+          labelClass += ' highlight';
         }
 
         const polygon = L.polygon(zone.coords, {
@@ -408,7 +413,8 @@
           fillOpacity: fillOpacity,
           interactive: true,
           smoothFactor: 1,
-          dashArray: !isCaptured ? '5, 5' : null // Пунктир для свободных зон
+          dashArray: !isCaptured ? '5, 5' : null,
+          className: isHighlighted ? 'highlighted-zone' : ''
         });
 
         polygon.bindPopup(`
@@ -423,6 +429,14 @@
         `);
 
         polygon.on('click', () => {
+          // Подсветка при клике
+          if (highlightedZone === zone.id) {
+            highlightedZone = null;
+          } else {
+            highlightedZone = zone.id;
+          }
+          drawZones();
+
           let statusText = '';
           if (!isCaptured) {
             statusText = '⬜ Свободна';
@@ -449,7 +463,6 @@
         polygon.addTo(map);
         zoneLayers.push(polygon);
 
-        // Центр зоны для метки
         const center = zone.coords.reduce(
           (acc, p) => [acc[0] + p[0] / zone.coords.length, acc[1] + p[1] / zone.coords.length],
           [0, 0]
@@ -463,13 +476,16 @@
         } else if (isCaptured && !isMine) {
           labelHtml += ' 🔴';
         }
+        if (isHighlighted) {
+          labelHtml += ' ✨';
+        }
 
         const label = L.marker(center, {
           icon: L.divIcon({
             className: `zone-label ${labelClass}`,
             html: labelHtml,
-            iconSize: [50, 34],
-            iconAnchor: [25, 17]
+            iconSize: [isHighlighted ? 58 : 50, isHighlighted ? 40 : 34],
+            iconAnchor: [isHighlighted ? 29 : 25, isHighlighted ? 20 : 17]
           }),
           interactive: false
         });
@@ -481,7 +497,7 @@
     }
 
     // ============================================================
-    // ПРОВЕРКА ОТБОРА (80% ПЕРИМЕТРА)
+    // ПРОВЕРКА ОТБОРА
     // ============================================================
     function checkSteal(zone, points) {
       if (zone.owner === 'me') return false;
@@ -492,7 +508,6 @@
       const perimeter = calcPerimeter(zone.coords);
       if (perimeter === 0) return false;
 
-      // Проверяем, сколько процентов периметра пробежал игрок
       let covered = 0;
       for (let i = 0; i < points.length; i++) {
         const p = points[i];
@@ -543,6 +558,7 @@
       zone.owner = 'me';
       capturedZones.add(zone.id);
       saveState();
+      highlightedZone = zone.id;
       drawZones();
       updateUI();
     }
@@ -659,6 +675,7 @@
         });
         capturedZones.clear();
         route = [];
+        highlightedZone = null;
         if (polyline) { map.removeLayer(polyline); polyline = null; }
         saveState();
         drawZones();
@@ -694,7 +711,7 @@
     // ============================================================
     loadState();
     drawZones();
-    console.log('🏃 Стратегическая игра — нейтральные границы');
+    console.log('🏃 Стратегическая игра — подсветка зон при клике');
   </script>
 </body>
 </html>
