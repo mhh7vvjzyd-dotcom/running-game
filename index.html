@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>🏃 Захват города — Секции</title>
+  <title>🏃 Нячанг — Захват зон</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, Arial, sans-serif; background: #000; }
+    body { font-family: -apple-system, Arial, sans-serif; }
     #map { height: 100vh; width: 100vw; }
     
     .info-panel {
@@ -22,19 +22,14 @@
       display: flex;
       justify-content: space-around;
       z-index: 1000;
-      font-size: 14px;
+      font-size: 13px;
       backdrop-filter: blur(10px);
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 6px;
     }
-    .info-panel span { padding: 4px 8px; }
-    .badge { 
-      background: #4CAF50; 
-      border-radius: 20px; 
-      padding: 2px 12px !important;
-      font-weight: bold;
-    }
-    .badge-gray { background: #555; }
+    .badge-green { background: #4CAF50; border-radius: 20px; padding: 2px 12px; font-weight: bold; }
+    .badge-gray { background: #555; border-radius: 20px; padding: 2px 12px; }
+    .badge-red { background: #f44336; border-radius: 20px; padding: 2px 12px; }
     
     .controls {
       position: fixed;
@@ -64,25 +59,9 @@
     .stop-btn { background: linear-gradient(135deg, #f44336, #d32f2f); }
     .reset-btn { 
       background: linear-gradient(135deg, #666, #444);
-      min-width: 80px;
+      min-width: 60px;
       padding: 18px 20px;
     }
-    
-    .legend {
-      position: fixed;
-      bottom: 130px;
-      left: 16px;
-      background: rgba(0,0,0,0.85);
-      color: white;
-      padding: 12px 16px;
-      border-radius: 12px;
-      font-size: 12px;
-      z-index: 1000;
-      backdrop-filter: blur(10px);
-      min-width: 120px;
-    }
-    .legend-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
-    .color-box { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #555; }
     
     .stats {
       position: fixed;
@@ -96,8 +75,6 @@
       z-index: 1000;
       backdrop-filter: blur(10px);
       max-width: 180px;
-      max-height: 200px;
-      overflow-y: auto;
     }
     .stats h4 { margin-bottom: 6px; border-bottom: 1px solid #555; padding-bottom: 4px; }
     .stat-item { padding: 3px 0; border-bottom: 1px solid #333; font-size: 11px; }
@@ -110,14 +87,8 @@
   <div class="info-panel" id="infoPanel">
     <span id="pointsCount">📍 0 точек</span>
     <span id="distanceDisplay">📏 0 м</span>
-    <span id="sectorCount">🏛️ 0 секций</span>
-    <span id="loopStatus" class="badge badge-gray">🔓 Не замкнуто</span>
-  </div>
-
-  <div class="legend">
-    <div class="legend-item"><div class="color-box" style="background:rgba(76,175,80,0.5);"></div> Твои секции</div>
-    <div class="legend-item"><div class="color-box" style="background:rgba(255,68,68,0.5);"></div> Твой маршрут</div>
-    <div class="legend-item"><div class="color-box" style="background:rgba(255,255,255,0.1);"></div> Сетка (1 км)</div>
+    <span id="zoneCount">🏛️ 0/41 зон</span>
+    <span id="loopStatus" class="badge-gray">🔓 Не замкнуто</span>
   </div>
 
   <div class="stats" id="statsPanel">
@@ -132,117 +103,207 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // ===== НАСТРОЙКИ =====
-    const GRID_SIZE = 1000; // 1 км в метрах
-    const GRID_DEGREES = GRID_SIZE / 111320; // 1 км ≈ 0.00898 градусов
+    // ===== КООРДИНАТЫ НЯЧАНГА =====
+    const NHA_TRANG = { lat: 12.2388, lng: 109.1967 };
+    
+    // ===== ГЕНЕРАЦИЯ 41 ЗОНЫ =====
+    function generateZones() {
+      const zones = [];
+      let id = 1;
+      
+      // Размеры зон (в км)
+      const sizes = {
+        center: { min: 2, max: 3.5, count: 8 },
+        north: { min: 3, max: 5, count: 10 },
+        south: { min: 3, max: 5.5, count: 9 },
+        west: { min: 3, max: 6, count: 7 },
+        east: { min: 3, max: 7, count: 7 }
+      };
+      
+      // Смещения от центра (в градусах)
+      const offsets = {
+        center: { lat: 0, lng: 0 },
+        north: { lat: 0.08, lng: 0 },
+        south: { lat: -0.08, lng: 0 },
+        west: { lat: 0, lng: -0.08 },
+        east: { lat: 0, lng: 0.08 }
+      };
+      
+      // Генерируем зоны для каждого сектора
+      Object.entries(sizes).forEach(([sector, data]) => {
+        const offset = offsets[sector];
+        const baseLat = NHA_TRANG.lat + offset.lat;
+        const baseLng = NHA_TRANG.lng + offset.lng;
+        
+        for (let i = 0; i < data.count; i++) {
+          // Случайный размер в пределах сектора
+          const size = data.min + Math.random() * (data.max - data.min);
+          const sizeDeg = size / 111;
+          
+          // Случайное смещение внутри сектора
+          const angle = Math.random() * 2 * Math.PI;
+          const radius = 0.015 + Math.random() * 0.025;
+          const latOff = Math.cos(angle) * radius;
+          const lngOff = Math.sin(angle) * radius;
+          
+          const centerLat = baseLat + latOff;
+          const centerLng = baseLng + lngOff;
+          
+          // Создаём прямоугольную зону
+          const half = sizeDeg / 2;
+          const coords = [
+            [centerLat - half, centerLng - half],
+            [centerLat - half, centerLng + half],
+            [centerLat + half, centerLng + half],
+            [centerLat + half, centerLng - half],
+            [centerLat - half, centerLng - half] // замыкаем
+          ];
+          
+          zones.push({
+            id: id.toString().padStart(2, '0'),
+            name: id.toString().padStart(2, '0'),
+            sector: sector,
+            area: Math.round(size * size * 100) / 100,
+            perimeter: Math.round(size * 4 * 100) / 100,
+            coords: coords,
+            center: [centerLat, centerLng],
+            status: 'free',
+            owner: null
+          });
+          id++;
+        }
+      });
+      
+      return zones;
+    }
 
-    // ===== СОСТОЯНИЕ =====
-    let map, watchId = null;
+    // ===== СОЗДАЁМ ЗОНЫ =====
+    const allZones = generateZones();
+    let capturedZones = new Set(); // номера захваченных зон
+
+    // ===== КАРТА =====
+    let map = L.map('map', {
+      center: [NHA_TRANG.lat, NHA_TRANG.lng],
+      zoom: 13
+    });
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // ===== СОСТОЯНИЕ ИГРЫ =====
     let isRunning = false;
     let route = [];
-    let capturedSectors = new Set(); // Храним ключи секций
-    let territoryPolygons = [];
+    let watchId = null;
     let polyline = null;
-    let gridLayer = null;
+    let zoneLayers = [];
 
-    // DOM элементы
+    // DOM
     const pointsSpan = document.getElementById('pointsCount');
     const distanceSpan = document.getElementById('distanceDisplay');
-    const sectorSpan = document.getElementById('sectorCount');
+    const zoneCountSpan = document.getElementById('zoneCount');
     const loopSpan = document.getElementById('loopStatus');
     const actionBtn = document.getElementById('actionBtn');
     const resetBtn = document.getElementById('resetBtn');
     const statsContent = document.getElementById('statsContent');
 
-    // ===== ИНИЦИАЛИЗАЦИЯ КАРТЫ =====
-    map = L.map('map', {
-      center: [55.7558, 37.6173],
-      zoom: 13,
-      zoomControl: true
-    });
+    // ===== РИСУЕМ ЗОНЫ =====
+    function drawZones() {
+      // Удаляем старые слои
+      zoneLayers.forEach(l => map.removeLayer(l));
+      zoneLayers = [];
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap'
-    }).addTo(map);
+      allZones.forEach(zone => {
+        const isCaptured = capturedZones.has(zone.id);
+        
+        const polygon = L.polygon(zone.coords, {
+          color: isCaptured ? '#4CAF50' : 'rgba(255,255,255,0.3)',
+          weight: isCaptured ? 3 : 1,
+          opacity: isCaptured ? 1 : 0.5,
+          fillColor: isCaptured ? '#4CAF50' : 'rgba(255,255,255,0.1)',
+          fillOpacity: isCaptured ? 0.5 : 0.1,
+          interactive: true
+        });
 
-    // ===== СОЗДАНИЕ СЕТКИ =====
-    function getSectorKey(lat, lng) {
-      const x = Math.floor(lng / GRID_DEGREES);
-      const y = Math.floor(lat / GRID_DEGREES);
-      return `${x},${y}`;
+        // Добавляем всплывашку с номером
+        polygon.bindPopup(`
+          <b>Зона ${zone.id}</b><br>
+          Сектор: ${zone.sector}<br>
+          Площадь: ${zone.area} км²<br>
+          Статус: ${isCaptured ? '✅ Захвачена' : '⬜ Свободна'}
+        `);
+
+        polygon.addTo(map);
+        zoneLayers.push(polygon);
+
+        // Добавляем номер зоны на карту
+        const label = L.marker(zone.center, {
+          icon: L.divIcon({
+            className: 'zone-label',
+            html: `<div style="
+              background: ${isCaptured ? 'rgba(76,175,80,0.9)' : 'rgba(0,0,0,0.6)'};
+              color: white;
+              border-radius: 50%;
+              width: 24px;
+              height: 24px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 11px;
+              font-weight: bold;
+              border: 2px solid ${isCaptured ? '#4CAF50' : '#666'};
+            ">${zone.id}</div>`,
+            iconSize: [24, 24]
+          })
+        });
+        label.addTo(map);
+        zoneLayers.push(label);
+      });
+
+      updateUI();
     }
 
-    function getSectorCenter(key) {
-      const [x, y] = key.split(',').map(Number);
-      return [
-        (y + 0.5) * GRID_DEGREES,
-        (x + 0.5) * GRID_DEGREES
-      ];
-    }
-
-    function drawGrid() {
-      if (gridLayer) map.removeLayer(gridLayer);
-      gridLayer = L.layerGroup();
-
-      const bounds = map.getBounds();
-      const latMin = Math.floor(bounds.getSouth() / GRID_DEGREES) * GRID_DEGREES;
-      const latMax = Math.ceil(bounds.getNorth() / GRID_DEGREES) * GRID_DEGREES;
-      const lngMin = Math.floor(bounds.getWest() / GRID_DEGREES) * GRID_DEGREES;
-      const lngMax = Math.ceil(bounds.getEast() / GRID_DEGREES) * GRID_DEGREES;
-
-      for (let lat = latMin; lat <= latMax; lat += GRID_DEGREES) {
-        for (let lng = lngMin; lng <= lngMax; lng += GRID_DEGREES) {
-          const key = getSectorKey(lat, lng);
-          const isCaptured = capturedSectors.has(key);
-          
-          const rect = L.rectangle(
-            [[lat, lng], [lat + GRID_DEGREES, lng + GRID_DEGREES]],
-            {
-              color: isCaptured ? '#4CAF50' : '#ffffff',
-              weight: 1,
-              opacity: isCaptured ? 0.8 : 0.2,
-              fillColor: isCaptured ? '#4CAF50' : 'transparent',
-              fillOpacity: isCaptured ? 0.5 : 0,
-              interactive: false
-            }
-          );
-          gridLayer.addLayer(rect);
-
-          // Добавляем подпись с координатами (опционально)
-          if (isCaptured) {
-            const center = getSectorCenter(key);
-            L.marker(center, {
-              icon: L.divIcon({
-                className: 'sector-label',
-                html: '✅',
-                iconSize: [20, 20]
-              })
-            }).addTo(gridLayer);
+    // ===== ПРОВЕРКА ЗАХВАТА ЗОН =====
+    function checkZoneCapture(points) {
+      if (points.length < 3) return;
+      
+      // Создаём полигон маршрута
+      const routePolygon = L.polygon([...points, points[0]]);
+      
+      allZones.forEach(zone => {
+        if (capturedZones.has(zone.id)) return;
+        
+        const zonePolygon = L.polygon(zone.coords);
+        
+        // Проверяем, пересекаются ли полигоны
+        if (routePolygon.getBounds().intersects(zonePolygon.getBounds())) {
+          // Дополнительная проверка: центр зоны внутри маршрута
+          const center = zone.center;
+          if (pointInPolygon(center, points)) {
+            capturedZones.add(zone.id);
           }
         }
-      }
-
-      gridLayer.addTo(map);
+      });
+      
+      drawZones();
+      updateUI();
     }
 
-    // ===== ГЕОЛОКАЦИЯ =====
-    function updateLocation() {
-      if (!navigator.geolocation) {
-        alert('Ваш браузер не поддерживает геолокацию');
-        return;
+    // ===== ПРОВЕРКА ТОЧКИ ВНУТРИ ПОЛИГОНА =====
+    function pointInPolygon(point, polygon) {
+      let inside = false;
+      const x = point[1], y = point[0];
+      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const xi = polygon[i][1], yi = polygon[i][0];
+        const xj = polygon[j][1], yj = polygon[j][0];
+        const intersect = ((yi > y) !== (yj > y)) &&
+          (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
       }
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          const { latitude, longitude } = pos.coords;
-          map.setView([latitude, longitude], 15);
-        },
-        err => alert('Ошибка GPS: ' + err.message),
-        { enableHighAccuracy: true }
-      );
+      return inside;
     }
-    updateLocation();
 
-    // ===== РАСЧЁТ РАССТОЯНИЯ =====
+    // ===== РАСЧЁТЫ =====
     function calcDistance(points) {
       if (points.length < 2) return 0;
       let total = 0;
@@ -252,85 +313,63 @@
       return total;
     }
 
-    // ===== ПРОВЕРКА ПЕТЛИ =====
     function isLoopClosed(points) {
       if (points.length < 5) return false;
-      const first = points[0];
-      const last = points[points.length - 1];
-      return map.distance(first, last) < 50;
+      return map.distance(points[0], points[points.length-1]) < 50;
     }
 
-    // ===== ЗАХВАТ СЕКЦИЙ =====
-    function captureSectors(points) {
-      if (points.length < 3) return;
-      
-      // Проверяем каждую точку маршрута
-      points.forEach(p => {
-        const key = getSectorKey(p[0], p[1]);
-        if (!capturedSectors.has(key)) {
-          capturedSectors.add(key);
-        }
-      });
-
-      // Также проверяем секции между точками (интерполяция)
-      for (let i = 1; i < points.length; i++) {
-        const p1 = points[i-1];
-        const p2 = points[i];
-        const steps = Math.max(3, Math.floor(map.distance(p1, p2) / 100)); // Каждые 100 м
-        for (let s = 1; s < steps; s++) {
-          const t = s / steps;
-          const lat = p1[0] + (p2[0] - p1[0]) * t;
-          const lng = p1[1] + (p2[1] - p1[1]) * t;
-          const key = getSectorKey(lat, lng);
-          if (!capturedSectors.has(key)) {
-            capturedSectors.add(key);
-          }
-        }
-      }
-
-      updateUI();
-      drawGrid();
-    }
-
-    // ===== ОБНОВЛЕНИЕ ИНФОРМАЦИИ =====
+    // ===== ОБНОВЛЕНИЕ UI =====
     function updateUI() {
       pointsSpan.textContent = '📍 ' + route.length + ' точек';
       distanceSpan.textContent = '📏 ' + Math.round(calcDistance(route)) + ' м';
-      sectorSpan.textContent = '🏛️ ' + capturedSectors.size + ' секций';
+      zoneCountSpan.textContent = '🏛️ ' + capturedZones.size + '/41 зон';
       
       if (isLoopClosed(route) && route.length > 0) {
         loopSpan.textContent = '🔒 ПЕТЛЯ!';
-        loopSpan.className = 'badge';
+        loopSpan.className = 'badge-green';
       } else {
         loopSpan.textContent = '🔓 Не замкнуто';
-        loopSpan.className = 'badge badge-gray';
+        loopSpan.className = 'badge-gray';
       }
 
-      // Статистика
-      statsContent.innerHTML = capturedSectors.size > 0 
-        ? `<div class="stat-item">🏆 Захвачено: ${capturedSectors.size} секций</div>
-           <div class="stat-item">📐 ~${Math.round(capturedSectors.size * 1)} км²</div>`
+      const totalArea = allZones
+        .filter(z => capturedZones.has(z.id))
+        .reduce((sum, z) => sum + z.area, 0);
+
+      statsContent.innerHTML = capturedZones.size > 0 
+        ? `<div class="stat-item">🏆 Зон: ${capturedZones.size}/41</div>
+           <div class="stat-item">📐 Площадь: ${Math.round(totalArea)} км²</div>`
         : 'Пока пусто';
     }
 
+    // ===== ГЕОЛОКАЦИЯ =====
+    function updateLocation() {
+      if (!navigator.geolocation) return alert('Нет GPS');
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          const { latitude, longitude } = pos.coords;
+          map.setView([latitude, longitude], 15);
+        },
+        () => {},
+        { enableHighAccuracy: true }
+      );
+    }
+    updateLocation();
+
     // ===== СТАРТ =====
     function startRun() {
-      if (!navigator.geolocation) return;
-      
       route = [];
       isRunning = true;
       actionBtn.textContent = '⏹ СТОП';
       actionBtn.className = 'stop-btn';
-
       if (polyline) { map.removeLayer(polyline); polyline = null; }
 
       navigator.geolocation.getCurrentPosition(
         pos => {
-          const p = [pos.coords.latitude, pos.coords.longitude];
-          route.push(p);
+          route.push([pos.coords.latitude, pos.coords.longitude]);
           updateUI();
         },
-        err => alert('Ошибка GPS: ' + err.message),
+        () => {},
         { enableHighAccuracy: true }
       );
 
@@ -338,40 +377,31 @@
         pos => {
           const p = [pos.coords.latitude, pos.coords.longitude];
           route.push(p);
-          
           if (polyline) map.removeLayer(polyline);
           polyline = L.polyline(route, { color: '#FF4444', weight: 4 }).addTo(map);
-          
           map.setView(p, 17);
           updateUI();
         },
-        err => alert('Ошибка GPS: ' + err.message),
-        { enableHighAccuracy: true, maximumAge: 2000, timeout: 5000 }
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 2000 }
       );
     }
 
     // ===== СТОП =====
     function stopRun() {
-      if (watchId) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-      }
+      if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
       isRunning = false;
       actionBtn.textContent = '🏃 СТАРТ';
       actionBtn.className = '';
 
-      if (route.length < 5) {
-        alert('❌ Слишком короткий маршрут');
-        return;
-      }
+      if (route.length < 5) return alert('❌ Слишком короткий маршрут');
 
       if (isLoopClosed(route)) {
-        captureSectors(route);
-        alert('🏆 Территория захвачена!\nСекций: ' + capturedSectors.size);
+        checkZoneCapture(route);
+        alert('🏆 Захвачено ' + capturedZones.size + ' зон из 41!');
       } else {
-        alert('❌ Маршрут не замкнут!\nВернись в точку старта (< 50 м)');
+        alert('❌ Вернись в точку старта (< 50 м)');
       }
-      
       updateUI();
     }
 
@@ -383,30 +413,19 @@
         actionBtn.textContent = '🏃 СТАРТ';
         actionBtn.className = '';
       }
-      capturedSectors.clear();
+      capturedZones.clear();
       route = [];
       if (polyline) { map.removeLayer(polyline); polyline = null; }
+      drawZones();
       updateUI();
-      drawGrid();
-      alert('🗑️ Все секции сброшены');
     }
 
     // ===== КНОПКИ =====
-    actionBtn.addEventListener('click', () => {
-      if (!isRunning) {
-        startRun();
-      } else {
-        stopRun();
-      }
-    });
-
+    actionBtn.addEventListener('click', () => isRunning ? stopRun() : startRun());
     resetBtn.addEventListener('click', resetGame);
 
-    // ===== ОБНОВЛЕНИЕ СЕТКИ ПРИ ПЕРЕМЕЩЕНИИ =====
-    map.on('moveend', drawGrid);
-
-    // ===== ПРИ ЗАГРУЗКЕ =====
-    setTimeout(drawGrid, 500);
+    // ===== ЗАПУСК =====
+    drawZones();
     updateUI();
   </script>
 </body>
