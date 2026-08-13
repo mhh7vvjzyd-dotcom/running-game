@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>🏃 Карта Нячанга — Зона</title>
+  <title>🏃 Нячанг — Зоны</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -22,13 +22,14 @@
       display: flex;
       justify-content: space-around;
       z-index: 1000;
-      font-size: 13px;
+      font-size: 12px;
       backdrop-filter: blur(12px);
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 6px;
       border: 1px solid rgba(255,255,255,0.08);
     }
     .badge-green { background: #2ecc71; border-radius: 20px; padding: 2px 12px; font-weight: bold; }
+    .badge-gray { background: #555; border-radius: 20px; padding: 2px 12px; }
     
     .controls {
       position: fixed;
@@ -72,7 +73,7 @@
       font-size: 12px;
       z-index: 1000;
       backdrop-filter: blur(10px);
-      max-width: 170px;
+      max-width: 190px;
       border: 1px solid rgba(255,255,255,0.06);
     }
     .stats h4 { margin-bottom: 6px; border-bottom: 1px solid #444; padding-bottom: 4px; }
@@ -91,6 +92,10 @@
       font-family: monospace;
       text-shadow: 0 0 12px rgba(0,0,0,0.9);
     }
+    .zone-label.captured {
+      background: rgba(46,204,113,0.9);
+      border-color: #2ecc71;
+    }
   </style>
 </head>
 <body>
@@ -98,13 +103,14 @@
   <div id="map"></div>
 
   <div class="info-panel" id="infoPanel">
-    <span id="zoneStatus">🏛️ Зона 01</span>
-    <span id="capturedStatus" class="badge-green">⬜ Свободна</span>
+    <span id="zoneCount">🏛️ Зон: 0/2</span>
+    <span id="capturedCount">✅ Захвачено: 0</span>
+    <span id="totalDistance">📏 Всего: 0 м</span>
   </div>
 
   <div class="stats" id="statsPanel">
-    <h4>📊 Зона</h4>
-    <div id="statsContent">Информация</div>
+    <h4>📊 Статистика</h4>
+    <div id="statsContent">Выбери зону</div>
   </div>
 
   <div class="controls">
@@ -115,30 +121,63 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     // ============================================================
-    // ЗОНА ПО ТВОИМ КООРДИНАТАМ
+    // РАСЧЁТ ПЕРИМЕТРА (дистанция по границе)
     // ============================================================
-    const zone = {
-      id: '01',
-      name: 'Vĩnh Hải',
-      sector: 'Центр',
-      coords: [
-        [12.2959054, 109.2216405],
-        [12.2951267, 109.2177517],
-        [12.2923235, 109.2125609],
-        [12.2921000, 109.2110000],
-        [12.2924772, 109.2094382],
-        [12.2941344, 109.2126608],
-        [12.2956220, 109.2136707],
-        [12.2972075, 109.2161775],
-        [12.2974191, 109.2184759]
-      ]
-    };
+    function calcPerimeter(coords) {
+      if (coords.length < 2) return 0;
+      let total = 0;
+      for (let i = 0; i < coords.length - 1; i++) {
+        total += map.distance(coords[i], coords[i + 1]);
+      }
+      // Замыкаем: последняя → первая
+      total += map.distance(coords[coords.length - 1], coords[0]);
+      return Math.round(total);
+    }
+
+    // ============================================================
+    // ЗОНЫ
+    // ============================================================
+    const zonesData = [
+      {
+        id: '01',
+        name: 'Vĩnh Hải',
+        sector: 'Центр',
+        color: '#3498db',
+        coords: [
+          [12.2959054, 109.2216405],
+          [12.2951267, 109.2177517],
+          [12.2923235, 109.2125609],
+          [12.2921000, 109.2110000],
+          [12.2924772, 109.2094382],
+          [12.2941344, 109.2126608],
+          [12.2956220, 109.2136707],
+          [12.2972075, 109.2161775],
+          [12.2974191, 109.2184759]
+        ]
+      },
+      {
+        id: '02',
+        name: 'Vĩnh Phước',
+        sector: 'Север',
+        color: '#e67e22',
+        coords: [
+          [12.3000000, 109.2200000],
+          [12.2990000, 109.2160000],
+          [12.2975000, 109.2130000],
+          [12.2960000, 109.2100000],
+          [12.2980000, 109.2080000],
+          [12.3005000, 109.2100000],
+          [12.3015000, 109.2140000],
+          [12.3010000, 109.2180000]
+        ]
+      }
+    ];
 
     // ============================================================
     // КАРТА
     // ============================================================
     const map = L.map('map', {
-      center: [12.295, 109.216],
+      center: [12.296, 109.216],
       zoom: 15,
       zoomControl: true
     });
@@ -150,74 +189,102 @@
     // ============================================================
     // СОСТОЯНИЕ
     // ============================================================
-    let isCaptured = false;
+    let capturedZones = new Set();
+    let zoneLayers = [];
+    let labelLayers = [];
 
-    const zoneStatus = document.getElementById('zoneStatus');
-    const capturedStatus = document.getElementById('capturedStatus');
+    const zoneCountSpan = document.getElementById('zoneCount');
+    const capturedCountSpan = document.getElementById('capturedCount');
+    const totalDistanceSpan = document.getElementById('totalDistance');
     const statsContent = document.getElementById('statsContent');
     const actionBtn = document.getElementById('actionBtn');
     const resetBtn = document.getElementById('resetBtn');
 
     // ============================================================
-    // РИСУЕМ ЗОНУ
+    // РИСОВАНИЕ ЗОН
     // ============================================================
-    function drawZone() {
-      // Полигон
-      const polygon = L.polygon(zone.coords, {
-        color: isCaptured ? '#2ecc71' : '#3498db',
-        weight: 3,
-        opacity: 0.9,
-        fillColor: isCaptured ? '#2ecc71' : '#3498db',
-        fillOpacity: isCaptured ? 0.4 : 0.15,
-        interactive: true
-      }).addTo(map);
+    function drawZones() {
+      zoneLayers.forEach(l => map.removeLayer(l));
+      labelLayers.forEach(l => map.removeLayer(l));
+      zoneLayers = [];
+      labelLayers = [];
 
-      polygon.bindPopup(`
-        <b>🏛️ Зона ${zone.id}</b><br>
-        ${zone.name}<br>
-        📍 ${zone.sector}<br>
-        ${isCaptured ? '✅ Захвачена' : '⬜ Свободна'}
-      `);
+      zonesData.forEach((zone) => {
+        const isCaptured = capturedZones.has(zone.id);
+        const perimeter = calcPerimeter(zone.coords);
 
-      // Метка с номером
-      const center = zone.coords.reduce(
-        (acc, p) => [acc[0] + p[0] / zone.coords.length, acc[1] + p[1] / zone.coords.length],
-        [0, 0]
-      );
+        const polygon = L.polygon(zone.coords, {
+          color: isCaptured ? '#2ecc71' : zone.color,
+          weight: isCaptured ? 3 : 2,
+          opacity: isCaptured ? 1 : 0.7,
+          fillColor: isCaptured ? '#2ecc71' : zone.color,
+          fillOpacity: isCaptured ? 0.4 : 0.15,
+          interactive: true,
+        });
 
-      const label = L.marker(center, {
-        icon: L.divIcon({
-          className: 'zone-label',
-          html: zone.id,
-          iconSize: [40, 30],
-          iconAnchor: [20, 15]
-        }),
-        interactive: false
-      }).addTo(map);
+        polygon.bindPopup(`
+          <b>🏛️ Зона ${zone.id}</b><br>
+          ${zone.name}<br>
+          📍 ${zone.sector}<br>
+          📏 Периметр: ${perimeter} м<br>
+          ${isCaptured ? '✅ Захвачена' : '⬜ Свободна'}
+        `);
 
-      // Маркеры точек
-      zone.coords.forEach((p, i) => {
-        L.marker(p, {
+        polygon.on('click', () => {
+          statsContent.innerHTML = `
+            <div class="stat-item">🏛️ Зона ${zone.id}</div>
+            <div class="stat-item">📍 ${zone.name}</div>
+            <div class="stat-item">📐 Сектор: ${zone.sector}</div>
+            <div class="stat-item" style="border-bottom:none;color:#f1c40f;">
+              🏃 Периметр: ${perimeter} м
+            </div>
+          `;
+        });
+
+        polygon.addTo(map);
+        zoneLayers.push(polygon);
+
+        const center = zone.coords.reduce(
+          (acc, p) => [acc[0] + p[0] / zone.coords.length, acc[1] + p[1] / zone.coords.length],
+          [0, 0]
+        );
+
+        const label = L.marker(center, {
           icon: L.divIcon({
-            className: 'point-label',
-            html: `<div style="
-              background: rgba(0,0,0,0.7);
-              color: white;
-              border-radius: 50%;
-              width: 22px;
-              height: 22px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 10px;
-              font-weight: bold;
-              border: 2px solid #f1c40f;
-            ">${i + 1}</div>`,
-            iconSize: [22, 22],
-            iconAnchor: [11, 11]
+            className: `zone-label ${isCaptured ? 'captured' : ''}`,
+            html: zone.id,
+            iconSize: [40, 30],
+            iconAnchor: [20, 15]
           }),
           interactive: false
-        }).addTo(map);
+        });
+        label.addTo(map);
+        labelLayers.push(label);
+
+        // Нумерованные точки
+        zone.coords.forEach((p, i) => {
+          L.marker(p, {
+            icon: L.divIcon({
+              className: 'point-label',
+              html: `<div style="
+                background: rgba(0,0,0,0.7);
+                color: white;
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 9px;
+                font-weight: bold;
+                border: 2px solid ${zone.color};
+              ">${i + 1}</div>`,
+              iconSize: [20, 20],
+              iconAnchor: [10, 10]
+            }),
+            interactive: false
+          }).addTo(map);
+        });
       });
 
       updateUI();
@@ -227,41 +294,53 @@
     // ОБНОВЛЕНИЕ UI
     // ============================================================
     function updateUI() {
-      zoneStatus.textContent = `🏛️ Зона ${zone.id} — ${zone.name}`;
-      capturedStatus.textContent = isCaptured ? '✅ Захвачена' : '⬜ Свободна';
-      capturedStatus.className = isCaptured ? 'badge-green' : '';
+      const total = zonesData.length;
+      const captured = capturedZones.size;
+      zoneCountSpan.textContent = `🏛️ Зон: ${captured}/${total}`;
+      capturedCountSpan.textContent = `✅ Захвачено: ${captured}`;
 
-      statsContent.innerHTML = `
-        <div class="stat-item">📍 Район: ${zone.name}</div>
-        <div class="stat-item">📐 Сектор: ${zone.sector}</div>
-        <div class="stat-item" style="border-bottom:none;color:${isCaptured ? '#2ecc71' : '#f39c12'};">
-          ${isCaptured ? '✅ Захвачена' : '⬜ Свободна'}
-        </div>
-      `;
+      // Суммарный периметр захваченных зон
+      let totalPerimeter = 0;
+      zonesData.forEach(z => {
+        if (capturedZones.has(z.id)) {
+          totalPerimeter += calcPerimeter(z.coords);
+        }
+      });
+      totalDistanceSpan.textContent = `📏 Всего: ${totalPerimeter} м`;
+
+      if (captured === 0) {
+        statsContent.innerHTML = '⬜ Кликни на зону';
+      }
     }
 
     // ============================================================
     // КНОПКИ
     // ============================================================
     actionBtn.addEventListener('click', () => {
-      isCaptured = !isCaptured;
-      // Очищаем карту и перерисовываем
-      map.eachLayer(layer => {
-        if (layer instanceof L.Polygon || layer instanceof L.Marker) {
-          map.removeLayer(layer);
-        }
-      });
-      drawZone();
+      // Захватываем первую свободную зону
+      const available = zonesData.filter(z => !capturedZones.has(z.id));
+      if (available.length > 0) {
+        capturedZones.add(available[0].id);
+        drawZones();
+        updateUI();
+        // Показываем периметр захваченной зоны
+        const perim = calcPerimeter(available[0].coords);
+        statsContent.innerHTML = `
+          <div class="stat-item">🏛️ Захвачена зона ${available[0].id}</div>
+          <div class="stat-item">📍 ${available[0].name}</div>
+          <div class="stat-item" style="border-bottom:none;color:#2ecc71;">
+            🏃 Нужно пробежать: ${perim} м
+          </div>
+        `;
+      } else {
+        alert('🎉 Все зоны захвачены!');
+      }
     });
 
     resetBtn.addEventListener('click', () => {
-      isCaptured = false;
-      map.eachLayer(layer => {
-        if (layer instanceof L.Polygon || layer instanceof L.Marker) {
-          map.removeLayer(layer);
-        }
-      });
-      drawZone();
+      capturedZones.clear();
+      drawZones();
+      statsContent.innerHTML = '⬜ Кликни на зону';
     });
 
     // ============================================================
@@ -283,8 +362,8 @@
     // ============================================================
     // ЗАПУСК
     // ============================================================
-    drawZone();
-    console.log('🏃 Зона по твоим координатам');
+    drawZones();
+    console.log('🏃 2 зоны, периметр рассчитан');
   </script>
 </body>
 </html>
