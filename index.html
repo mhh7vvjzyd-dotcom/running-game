@@ -32,7 +32,6 @@
     .badge-yellow { background: #f1c40f; border-radius: 20px; padding: 2px 12px; font-weight: bold; color: #1a1a2e; }
     .badge-gray { background: #555; border-radius: 20px; padding: 2px 12px; }
     .badge-red { background: #e74c3c; border-radius: 20px; padding: 2px 12px; font-weight: bold; }
-    .badge-gold { background: #f1c40f; border-radius: 20px; padding: 2px 12px; font-weight: bold; color: #1a1a2e; }
     
     .controls {
       position: fixed;
@@ -181,7 +180,6 @@
     <div id="statsContent">Кликни на зону</div>
   </div>
 
-  <!-- Турнирная таблица -->
   <div class="leaderboard" id="leaderboard">
     <h4>🏆 ТУРНИРНАЯ ТАБЛИЦА</h4>
     <div id="lbContent">Загрузка...</div>
@@ -233,22 +231,119 @@
     function getPoints(zone) {
       if (!zone.capturedAt) return 0;
       const days = Math.floor(getDaysSince(zone.capturedAt));
-      return days * 1; // 1 очко в день за каждую зону
+      return days * 1;
     }
 
     // ============================================================
-    // ЗОНЫ
+    // 8 ЗОН
     // ============================================================
     const zonesData = [
-      // ... все 8 зон (для краткости оставляю, но в реальном коде они есть)
-      // См. полный код в предыдущих версиях
+      {
+        id: '01', name: 'Vĩnh Hải', sector: 'Север',
+        coords: [
+          [12.2959054, 109.2216405], [12.2951267, 109.2177517],
+          [12.2923235, 109.2125609], [12.2921000, 109.2110000],
+          [12.2924772, 109.2094382], [12.2941344, 109.2126608],
+          [12.2956220, 109.2136707], [12.2972075, 109.2161775],
+          [12.2974191, 109.2184759]
+        ]
+      },
+      {
+        id: '02', name: 'Vĩnh Phước', sector: 'Север',
+        coords: [
+          [12.2962654, 109.2213002], [12.2975950, 109.2203373],
+          [12.2988297, 109.2173041], [12.3000696, 109.2144103],
+          [12.3014942, 109.2096397], [12.3018978, 109.2077447],
+          [12.2956413, 109.2114488], [12.2964750, 109.2124100],
+          [12.2968203, 109.2131564], [12.2967479, 109.2152532],
+          [12.2971500, 109.2162000], [12.2974244, 109.2175213],
+          [12.2973589, 109.2189271]
+        ]
+      },
+      {
+        id: '03', name: 'Vĩnh Thọ', sector: 'Север',
+        coords: [
+          [12.2914859, 109.2075150], [12.2912536, 109.2084384],
+          [12.2917984, 109.2089302], [12.2922606, 109.2084846],
+          [12.2931818, 109.2109171], [12.2940797, 109.2125334],
+          [12.2955172, 109.2135550], [12.2968118, 109.2152143],
+          [12.2968213, 109.2131128], [12.2964505, 109.2123748],
+          [12.2956027, 109.2114357], [12.3019142, 109.2077219],
+          [12.3014104, 109.2068485], [12.2978892, 109.2080789],
+          [12.2922718, 109.2081903]
+        ]
+      },
+      {
+        id: '04', name: 'Vĩnh Trường', sector: 'Север',
+        coords: [
+          [12.2895295, 109.2063285], [12.2902070, 109.2051047],
+          [12.2901680, 109.2047996], [12.2899577, 109.2045381],
+          [12.2892216, 109.2041542], [12.2884819, 109.2037324],
+          [12.2883554, 109.1967339], [12.2824321, 109.1967758],
+          [12.2822595, 109.2030605]
+        ]
+      },
+      {
+        id: '05', name: 'Vĩnh Lương', sector: 'Север',
+        coords: [
+          [12.2884429, 109.1998902], [12.2895429, 109.1998841],
+          [12.2896487, 109.1997809], [12.2897418, 109.1989205],
+          [12.2899845, 109.1976820], [12.2902302, 109.1945603],
+          [12.2900589, 109.1939994], [12.2900920, 109.1936098],
+          [12.2902066, 109.1924993], [12.2880602, 109.1924303],
+          [12.2881156, 109.1902205], [12.2879593, 109.1900780],
+          [12.2817805, 109.1939487], [12.2824472, 109.1958109],
+          [12.2824606, 109.1968197], [12.2840256, 109.1966400],
+          [12.2884085, 109.1967298]
+        ]
+      },
+      {
+        id: '06', name: 'Vĩnh Phương', sector: 'Север',
+        coords: [
+          [12.2745558, 109.2022746], [12.2764559, 109.2021013],
+          [12.2784956, 109.2028926], [12.2801910, 109.2026491],
+          [12.2822555, 109.2026347], [12.2824691, 109.1958719],
+          [12.2817608, 109.1939591], [12.2754475, 109.1978534],
+          [12.2742291, 109.1981849]
+        ]
+      },
+      {
+        id: '07', name: 'Vĩnh Thạnh', sector: 'Север',
+        coords: [
+          [12.2746085, 109.2022800], [12.2698640, 109.2057089],
+          [12.2685552, 109.2058396], [12.2667588, 109.2045465],
+          [12.2663244, 109.2034632], [12.2661799, 109.2015518],
+          [12.2679763, 109.1971094], [12.2682076, 109.1968626],
+          [12.2698722, 109.1978044], [12.2710339, 109.1980485],
+          [12.2742337, 109.1981575]
+        ]
+      },
+      {
+        id: '08', name: 'Vĩnh Thái', sector: 'Север',
+        coords: [
+          [12.2703839, 109.1979989], [12.2697664, 109.1990650],
+          [12.2697185, 109.1993809], [12.2690600, 109.1999985],
+          [12.2686977, 109.2005969], [12.2701078, 109.2026364],
+          [12.2705802, 109.2043876], [12.2710690, 109.2056284],
+          [12.2715673, 109.2059640], [12.2719417, 109.2058929],
+          [12.2720574, 109.2057049], [12.2720541, 109.2055121],
+          [12.2718232, 109.2050165], [12.2718159, 109.2048476],
+          [12.2720846, 109.2045321], [12.2720698, 109.2044251],
+          [12.2718949, 109.2042132], [12.2698168, 109.2057464],
+          [12.2683904, 109.2057833], [12.2667975, 109.2046417],
+          [12.2663391, 109.2035896], [12.2659362, 109.2015515],
+          [12.2648750, 109.2002932], [12.2642106, 109.1993822],
+          [12.2641798, 109.1990265], [12.2644101, 109.1979023],
+          [12.2644763, 109.1966229], [12.2651882, 109.1964318],
+          [12.2656610, 109.1963335], [12.2681830, 109.1968831]
+        ]
+      }
     ];
 
     // ============================================================
     // СОСТОЯНИЕ
     // ============================================================
     let highlightedZone = null;
-    let playerName = '';
 
     function loadState() {
       try {
@@ -263,8 +358,6 @@
             }
           });
         }
-        const name = localStorage.getItem('playerName');
-        if (name) playerName = name;
       } catch (e) {}
     }
 
@@ -325,7 +418,6 @@
     function updateLeaderboard() {
       const players = {};
       
-      // Собираем всех игроков
       zonesData.forEach(z => {
         if (z.owner && z.capturedAt) {
           const owner = z.owner;
@@ -337,7 +429,6 @@
         }
       });
 
-      // Добавляем текущего игрока, если его нет
       const me = 'me';
       const myZones = zonesData.filter(z => z.owner === 'me' && z.capturedAt);
       if (!players[me] && myZones.length > 0) {
@@ -349,7 +440,6 @@
         players[me].name = 'Ты';
       }
 
-      // Преобразуем в массив и сортируем по очкам
       const sorted = Object.values(players)
         .filter(p => p.zones > 0 || p.points > 0)
         .sort((a, b) => b.points - a.points || b.zones - a.zones);
@@ -389,8 +479,129 @@
       labelLayers = [];
 
       zonesData.forEach((zone) => {
-        // ... логика отрисовки (как в предыдущей версии)
-        // (полный код в финальном варианте)
+        const isMine = zone.owner === 'me';
+        const isCaptured = !!zone.capturedAt;
+        const protected_ = isProtected(zone);
+        const perimeter = calcPerimeter(zone.coords);
+        const points = getPoints(zone);
+        const isHighlighted = highlightedZone === zone.id;
+
+        let color, fillColor, fillOpacity, weight, labelClass, dashArray;
+
+        if (!isCaptured) {
+          color = '#666';
+          fillColor = 'rgba(100,100,100,0.05)';
+          fillOpacity = 0.05;
+          weight = isHighlighted ? 5 : 2;
+          labelClass = 'free';
+          dashArray = '5, 5';
+        } else if (isMine) {
+          if (protected_) {
+            color = isHighlighted ? '#6ee7b9' : '#2ecc71';
+            fillColor = isHighlighted ? 'rgba(46,204,113,0.5)' : 'rgba(46,204,113,0.25)';
+            fillOpacity = isHighlighted ? 0.5 : 0.25;
+            weight = isHighlighted ? 6 : 4;
+            labelClass = 'captured';
+            dashArray = null;
+          } else {
+            color = isHighlighted ? '#f5d742' : '#f1c40f';
+            fillColor = isHighlighted ? 'rgba(241,196,15,0.5)' : 'rgba(241,196,15,0.25)';
+            fillOpacity = isHighlighted ? 0.5 : 0.25;
+            weight = isHighlighted ? 6 : 4;
+            labelClass = 'vulnerable';
+            dashArray = null;
+          }
+        } else {
+          color = isHighlighted ? '#ff6b6b' : '#e74c3c';
+          fillColor = isHighlighted ? 'rgba(231,76,60,0.4)' : 'rgba(231,76,60,0.2)';
+          fillOpacity = isHighlighted ? 0.4 : 0.2;
+          weight = isHighlighted ? 5 : 3;
+          labelClass = 'other';
+          dashArray = null;
+        }
+
+        const polygon = L.polygon(zone.coords, {
+          color: color,
+          weight: weight,
+          opacity: isHighlighted ? 1 : 0.9,
+          fillColor: fillColor,
+          fillOpacity: fillOpacity,
+          interactive: true,
+          smoothFactor: 1,
+          dashArray: dashArray,
+          className: isHighlighted ? 'highlighted-zone' : ''
+        });
+
+        polygon.bindPopup(`
+          <b>🏛️ Зона ${zone.id}</b><br>
+          ${zone.name}<br>
+          📍 ${zone.sector}<br>
+          📏 Периметр: ${perimeter} м<br>
+          ${isCaptured ? `👤 Владелец: ${isMine ? 'Ты' : 'Другой игрок'}` : '⬜ Свободна'}<br>
+          ${isCaptured ? `🛡️ ${protected_ ? '✅ Защищена' : '⚠️ Уязвима'}` : ''}<br>
+          ${isCaptured && isMine ? `⭐ Очков: ${points}` : ''}
+          ${!isCaptured ? '🏃 Нажми СТАРТ, чтобы захватить!' : ''}
+        `);
+
+        polygon.on('click', () => {
+          if (highlightedZone === zone.id) {
+            highlightedZone = null;
+          } else {
+            highlightedZone = zone.id;
+          }
+          drawZones();
+
+          let statusText = '';
+          if (!isCaptured) {
+            statusText = '⬜ Свободна';
+          } else if (isMine && protected_) {
+            statusText = '🛡️ Защищена';
+          } else if (isMine && !protected_) {
+            statusText = '⚠️ Уязвима';
+          } else {
+            statusText = '👤 Занята другим игроком';
+          }
+
+          statsContent.innerHTML = `
+            <div class="stat-item">🏛️ Зона ${zone.id}</div>
+            <div class="stat-item">📍 ${zone.name}</div>
+            <div class="stat-item">📐 Сектор: ${zone.sector}</div>
+            <div class="stat-item">📏 Периметр: ${perimeter} м</div>
+            <div class="stat-item" style="border-bottom:none;color:${isCaptured ? (isMine ? (protected_ ? '#2ecc71' : '#f1c40f') : '#e74c3c') : '#888'};">
+              ${statusText}
+            </div>
+            ${isCaptured && isMine ? `<div class="stat-item" style="border-bottom:none;color:#f1c40f;">⭐ Очков: ${points}</div>` : ''}
+          `;
+        });
+
+        polygon.addTo(map);
+        zoneLayers.push(polygon);
+
+        const center = zone.coords.reduce(
+          (acc, p) => [acc[0] + p[0] / zone.coords.length, acc[1] + p[1] / zone.coords.length],
+          [0, 0]
+        );
+
+        let labelHtml = zone.id;
+        if (isCaptured && isMine && protected_) {
+          labelHtml += ' 🔒';
+        } else if (isCaptured && isMine && !protected_) {
+          labelHtml += ' ⚠️';
+        } else if (isCaptured && !isMine) {
+          labelHtml += ' 🔴';
+        }
+
+        const label = L.marker(center, {
+          icon: L.divIcon({
+            className: `zone-label ${labelClass}`,
+            html: labelHtml,
+            iconSize: [50, 34],
+            iconAnchor: [25, 17]
+          }),
+          interactive: false
+        });
+        label.addTo(map);
+        labelLayers.push(label);
       });
 
       updateUI();
@@ -398,18 +609,32 @@
     }
 
     // ============================================================
-    // ОБНОВЛЕНИЕ UI
+    // ПРОВЕРКА ОТБОРА
     // ============================================================
-    function updateUI() {
-      const total = zonesData.length;
-      const captured = zonesData.filter(z => z.owner === 'me').length;
-      const totalPoints = zonesData
-        .filter(z => z.owner === 'me')
-        .reduce((sum, z) => sum + getPoints(z), 0);
+    function checkSteal(zone, points) {
+      if (zone.owner === 'me') return false;
+      if (!zone.capturedAt) return false;
+      if (isProtected(zone)) return false;
+      if (points.length < 5) return false;
 
-      zoneCountSpan.textContent = `🏛️ Зон: ${captured}/${total}`;
-      capturedCountSpan.textContent = `✅ Захвачено: ${captured}`;
-      totalPointsSpan.textContent = `⭐ Очков: ${totalPoints}`;
+      const perimeter = calcPerimeter(zone.coords);
+      if (perimeter === 0) return false;
+
+      let covered = 0;
+      for (let i = 0; i < points.length; i++) {
+        const p = points[i];
+        let minDist = Infinity;
+        for (let j = 0; j < zone.coords.length; j++) {
+          const d = map.distance(p, zone.coords[j]);
+          if (d < minDist) minDist = d;
+        }
+        if (minDist < 20) {
+          covered++;
+        }
+      }
+
+      const coverage = covered / points.length;
+      return coverage >= STEAL_THRESHOLD;
     }
 
     // ============================================================
@@ -451,32 +676,18 @@
     }
 
     // ============================================================
-    // ПРОВЕРКА ОТБОРА
+    // ОБНОВЛЕНИЕ UI
     // ============================================================
-    function checkSteal(zone, points) {
-      if (zone.owner === 'me') return false;
-      if (!zone.capturedAt) return false;
-      if (isProtected(zone)) return false;
-      if (points.length < 5) return false;
+    function updateUI() {
+      const total = zonesData.length;
+      const captured = zonesData.filter(z => z.owner === 'me').length;
+      const totalPoints = zonesData
+        .filter(z => z.owner === 'me')
+        .reduce((sum, z) => sum + getPoints(z), 0);
 
-      const perimeter = calcPerimeter(zone.coords);
-      if (perimeter === 0) return false;
-
-      let covered = 0;
-      for (let i = 0; i < points.length; i++) {
-        const p = points[i];
-        let minDist = Infinity;
-        for (let j = 0; j < zone.coords.length; j++) {
-          const d = map.distance(p, zone.coords[j]);
-          if (d < minDist) minDist = d;
-        }
-        if (minDist < 20) {
-          covered++;
-        }
-      }
-
-      const coverage = covered / points.length;
-      return coverage >= STEAL_THRESHOLD;
+      zoneCountSpan.textContent = `🏛️ Зон: ${captured}/${total}`;
+      capturedCountSpan.textContent = `✅ Захвачено: ${captured}`;
+      totalPointsSpan.textContent = `⭐ Очков: ${totalPoints}`;
     }
 
     // ============================================================
@@ -563,56 +774,3 @@
     }
 
     function resetGame() {
-      if (isRunning) {
-        if (watchId) navigator.geolocation.clearWatch(watchId);
-        isRunning = false;
-        actionBtn.textContent = '🏃 СТАРТ';
-        actionBtn.className = '';
-      }
-      if (confirm('Сбросить все зоны?')) {
-        zonesData.forEach(z => {
-          z.capturedAt = null;
-          z.owner = null;
-        });
-        capturedZones.clear();
-        route = [];
-        highlightedZone = null;
-        if (polyline) { map.removeLayer(polyline); polyline = null; }
-        saveState();
-        drawZones();
-        updateUI();
-        statsContent.innerHTML = '⬜ Кликни на зону';
-      }
-    }
-
-    // ============================================================
-    // КНОПКИ
-    // ============================================================
-    actionBtn.addEventListener('click', () => isRunning ? stopRun() : startRun());
-    resetBtn.addEventListener('click', resetGame);
-
-    // ============================================================
-    // ГЕОЛОКАЦИЯ
-    // ============================================================
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          map.setView([pos.coords.latitude, pos.coords.longitude], 14);
-          L.marker([pos.coords.latitude, pos.coords.longitude])
-            .addTo(map)
-            .bindPopup('📍 Вы здесь');
-        },
-        () => {},
-        { enableHighAccuracy: true }
-      );
-    }
-
-    // ============================================================
-    // ЗАПУСК
-    // ============================================================
-    loadState();
-    drawZones();
-    console.log('🏃 Турнирный режим — таблица лидеров');
-  </script>
-</body>
-</html>
