@@ -183,6 +183,7 @@
           [12.2964750, 109.2124100],
           [12.2968203, 109.2131564],
           [12.2967479, 109.2152532],
+          [12.2971500, 109.2162000],
           [12.2974244, 109.2175213],
           [12.2973589, 109.2189271]
         ]
@@ -232,7 +233,6 @@
         const isCaptured = capturedZones.has(zone.id);
         const perimeter = calcPerimeter(zone.coords);
 
-        // ПОЛИГОН
         const polygon = L.polygon(zone.coords, {
           color: isCaptured ? '#2ecc71' : zone.color,
           weight: isCaptured ? 4 : 3,
@@ -265,7 +265,6 @@
         polygon.addTo(map);
         zoneLayers.push(polygon);
 
-        // МЕТКА С НОМЕРОМ ЗОНЫ
         const center = zone.coords.reduce(
           (acc, p) => [acc[0] + p[0] / zone.coords.length, acc[1] + p[1] / zone.coords.length],
           [0, 0]
@@ -283,7 +282,7 @@
         label.addTo(map);
         labelLayers.push(label);
 
-        // ТОЧКИ С НОМЕРАМИ (для редактирования)
+        // ТОЧКИ С НОМЕРАМИ
         zone.coords.forEach((p, i) => {
           const pointMarker = L.marker(p, {
             icon: L.divIcon({
@@ -372,7 +371,7 @@
     // ЗАПУСК
     // ============================================================
     drawZones();
-    console.log('🏃 Зоны с точками для редактирования');
+    console.log('🏃 Зона 02 — 13 точек, добавлена точка 10.5');
   </script>
 </body>
 </html>
