@@ -3,31 +3,83 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>🏃 Превью зон Нячанг</title>
+  <title>🏃 Нячанг — Реальные зоны</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; background: #1a1a2e; }
+    body { font-family: -apple-system, Arial, sans-serif; background: #1a1a2e; }
     #map { height: 100vh; width: 100vw; }
     
-    .info {
+    .info-panel {
       position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.85);
-      color: #fff;
-      padding: 14px 24px;
-      border-radius: 16px;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      background: rgba(0,0,0,0.88);
+      color: white;
+      padding: 10px 14px;
+      border-radius: 14px;
+      display: flex;
+      justify-content: space-around;
       z-index: 1000;
-      font-size: 14px;
-      text-align: center;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.1);
-      max-width: 90%;
+      font-size: 12px;
+      backdrop-filter: blur(12px);
+      flex-wrap: wrap;
+      gap: 4px;
+      border: 1px solid rgba(255,255,255,0.08);
     }
-    .info span { color: #2ecc71; font-weight: bold; }
+    .badge-green { background: #2ecc71; border-radius: 20px; padding: 2px 12px; font-weight: bold; }
+    .badge-gray { background: #555; border-radius: 20px; padding: 2px 12px; }
     
+    .controls {
+      position: fixed;
+      bottom: 40px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      z-index: 1000;
+    }
+    
+    button {
+      padding: 16px 36px;
+      font-size: 18px;
+      font-weight: bold;
+      border: none;
+      border-radius: 50px;
+      color: white;
+      background: linear-gradient(135deg, #2ecc71, #27ae60);
+      box-shadow: 0 4px 20px rgba(46,204,113,0.3);
+      cursor: pointer;
+      transition: 0.3s;
+      min-width: 140px;
+    }
+    button:active { transform: scale(0.95); }
+    .stop-btn { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+    .reset-btn { 
+      background: linear-gradient(135deg, #555, #333);
+      min-width: 56px;
+      padding: 16px 18px;
+    }
+    
+    .stats {
+      position: fixed;
+      bottom: 120px;
+      right: 16px;
+      background: rgba(0,0,0,0.85);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 14px;
+      font-size: 12px;
+      z-index: 1000;
+      backdrop-filter: blur(10px);
+      max-width: 170px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .stats h4 { margin-bottom: 6px; border-bottom: 1px solid #444; padding-bottom: 4px; }
+    .stat-item { padding: 3px 0; border-bottom: 1px solid #2a2a2a; font-size: 11px; }
+
     .zone-label {
       background: rgba(0,0,0,0.8);
       color: white;
@@ -41,57 +93,87 @@
       font-family: monospace;
       text-shadow: 0 0 10px rgba(0,0,0,0.9);
     }
+    .zone-label.captured {
+      background: rgba(46,204,113,0.9);
+      border-color: #2ecc71;
+      box-shadow: 0 0 20px rgba(46,204,113,0.3);
+    }
+    .region-label {
+      color: white;
+      font-size: 13px;
+      font-weight: bold;
+      text-shadow: 0 0 12px rgba(0,0,0,0.9);
+      background: rgba(0,0,0,0.5);
+      padding: 4px 12px;
+      border-radius: 8px;
+      border-left: 3px solid #f1c40f;
+    }
   </style>
 </head>
 <body>
 
   <div id="map"></div>
   
-  <div class="info">
-    🏛️ Превью зон Нячанга<br>
-    <span>Север (01)</span> · <span>Центр (02)</span> · <span>Юг (03)</span>
+  <div class="info-panel" id="infoPanel">
+    <span id="pointsCount">📍 0</span>
+    <span id="distanceDisplay">📏 0 м</span>
+    <span id="zoneCount">🏛️ 0/3</span>
+    <span id="loopStatus" class="badge-gray">🔓 Не замкнуто</span>
+  </div>
+
+  <div class="stats" id="statsPanel">
+    <h4>🏅 Захвачено</h4>
+    <div id="statsContent">⬜ Ни одной</div>
+  </div>
+
+  <div class="controls">
+    <button class="reset-btn" id="resetBtn">🗑️</button>
+    <button id="actionBtn">🏃 СТАРТ</button>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     // ============================================================
-    // 3 ЗОНЫ ВДОЛЬ БЕРЕГА НЯЧАНГА (ТОЛЬКО СУША)
+    // РЕАЛЬНЫЕ ЗОНЫ НЯЧАНГА (КООРДИНАТЫ ИЗ ИНТЕРНЕТА)
     // ============================================================
-    const zones = [
+    const ZONES = [
       {
         id: '01',
-        name: 'Север',
+        name: 'Vĩnh Hòa',
         color: '#3498db',
+        center: [12.3003, 109.2047],
         coords: [
-          [12.285, 109.190],
-          [12.285, 109.208],
-          [12.265, 109.208],
-          [12.265, 109.190],
-          [12.285, 109.190]
+          [12.308, 109.198],
+          [12.308, 109.210],
+          [12.292, 109.212],
+          [12.290, 109.198],
+          [12.308, 109.198]
         ]
       },
       {
         id: '02',
-        name: 'Центр',
+        name: 'Vĩnh Hải',
         color: '#2ecc71',
+        center: [12.2828, 109.1881],
         coords: [
-          [12.250, 109.185],
-          [12.250, 109.205],
-          [12.230, 109.205],
-          [12.230, 109.185],
-          [12.250, 109.185]
+          [12.290, 109.182],
+          [12.290, 109.194],
+          [12.274, 109.196],
+          [12.272, 109.182],
+          [12.290, 109.182]
         ]
       },
       {
         id: '03',
-        name: 'Юг',
+        name: 'Vĩnh Thọ',
         color: '#e67e22',
+        center: [12.2672, 109.2000],
         coords: [
-          [12.215, 109.182],
-          [12.215, 109.202],
-          [12.195, 109.202],
-          [12.195, 109.182],
-          [12.215, 109.182]
+          [12.274, 109.194],
+          [12.274, 109.206],
+          [12.258, 109.208],
+          [12.256, 109.194],
+          [12.274, 109.194]
         ]
       }
     ];
@@ -100,8 +182,8 @@
     // КАРТА
     // ============================================================
     const map = L.map('map', {
-      center: [12.240, 109.195],
-      zoom: 12,
+      center: [12.270, 109.195],
+      zoom: 13,
       zoomControl: true
     });
 
@@ -110,114 +192,245 @@
     }).addTo(map);
 
     // ============================================================
-    // РИСУЕМ ЗОНЫ
+    // СОСТОЯНИЕ
     // ============================================================
-    zones.forEach(zone => {
-      // Вычисляем центр
-      let latSum = 0, lngSum = 0;
-      zone.coords.forEach(p => { latSum += p[0]; lngSum += p[1]; });
-      const centerLat = latSum / zone.coords.length;
-      const centerLng = lngSum / zone.coords.length;
+    let capturedZones = new Set();
+    let isRunning = false;
+    let route = [];
+    let watchId = null;
+    let polyline = null;
+    let zoneLayers = [];
+    let labelLayers = [];
 
-      // Полигон
-      const polygon = L.polygon(zone.coords, {
-        color: zone.color,
-        weight: 3,
-        opacity: 0.9,
-        fillColor: zone.color,
-        fillOpacity: 0.25,
-        interactive: true,
+    const pointsSpan = document.getElementById('pointsCount');
+    const distanceSpan = document.getElementById('distanceDisplay');
+    const zoneCountSpan = document.getElementById('zoneCount');
+    const loopSpan = document.getElementById('loopStatus');
+    const actionBtn = document.getElementById('actionBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const statsContent = document.getElementById('statsContent');
+
+    // ============================================================
+    // РИСОВАНИЕ ЗОН
+    // ============================================================
+    function drawZones() {
+      zoneLayers.forEach(l => map.removeLayer(l));
+      labelLayers.forEach(l => map.removeLayer(l));
+      zoneLayers = [];
+      labelLayers = [];
+
+      ZONES.forEach(zone => {
+        const isCaptured = capturedZones.has(zone.id);
+
+        const polygon = L.polygon(zone.coords, {
+          color: isCaptured ? '#2ecc71' : zone.color,
+          weight: isCaptured ? 3 : 2,
+          opacity: isCaptured ? 1 : 0.6,
+          fillColor: isCaptured ? '#2ecc71' : zone.color,
+          fillOpacity: isCaptured ? 0.4 : 0.15,
+          interactive: true,
+        });
+
+        polygon.bindPopup(`
+          <b>🏛️ Зона ${zone.id}</b><br>
+          📍 Район: ${zone.name}<br>
+          ${isCaptured ? '✅ Захвачена' : '⬜ Свободна'}
+        `);
+
+        polygon.addTo(map);
+        zoneLayers.push(polygon);
+
+        const label = L.marker(zone.center, {
+          icon: L.divIcon({
+            className: `zone-label ${isCaptured ? 'captured' : ''}`,
+            html: zone.id,
+            iconSize: [44, 32],
+            iconAnchor: [22, 16]
+          }),
+          interactive: false
+        });
+        label.addTo(map);
+        labelLayers.push(label);
+
+        // Подпись с названием района
+        const nameLabel = L.marker([zone.center[0] - 0.008, zone.center[1]], {
+          icon: L.divIcon({
+            className: 'region-label',
+            html: zone.name,
+            iconSize: [100, 24],
+            iconAnchor: [50, 12]
+          }),
+          interactive: false
+        });
+        nameLabel.addTo(map);
+        labelLayers.push(nameLabel);
       });
+    }
 
-      polygon.bindPopup(`
-        <b>🏛️ Зона ${zone.id}</b><br>
-        📍 Район: ${zone.name}<br>
-        📐 Площадь: ~${Math.round(zone.coords.length * 0.8)} км²
-      `);
-
-      polygon.addTo(map);
-
-      // Метка с номером
-      const label = L.marker([centerLat, centerLng], {
-        icon: L.divIcon({
-          className: 'zone-label',
-          html: zone.id,
-          iconSize: [40, 30],
-          iconAnchor: [20, 15]
-        }),
-        interactive: false
+    // ============================================================
+    // ПРОВЕРКА ЗАХВАТА
+    // ============================================================
+    function checkZoneCapture(points) {
+      if (points.length < 3) return;
+      
+      const routePolygon = L.polygon([...points, points[0]]);
+      const routeBounds = routePolygon.getBounds();
+      
+      ZONES.forEach(zone => {
+        if (capturedZones.has(zone.id)) return;
+        
+        const zonePolygon = L.polygon(zone.coords);
+        if (routeBounds.intersects(zonePolygon.getBounds())) {
+          if (pointInPolygon(zone.center, points)) {
+            capturedZones.add(zone.id);
+          }
+        }
       });
-      label.addTo(map);
-    });
+      
+      drawZones();
+      updateUI();
+    }
 
     // ============================================================
-    // ДОБАВЛЯЕМ ОРИЕНТИРЫ
+    // ВСПОМОГАТЕЛЬНЫЕ
     // ============================================================
-    // Береговая линия (примерно)
-    const beachLine = [
-      [12.290, 109.215],
-      [12.280, 109.215],
-      [12.270, 109.215],
-      [12.260, 109.213],
-      [12.250, 109.212],
-      [12.240, 109.210],
-      [12.230, 109.210],
-      [12.220, 109.208],
-      [12.210, 109.208],
-      [12.200, 109.205],
-      [12.190, 109.205]
-    ];
+    function pointInPolygon(point, polygon) {
+      let inside = false;
+      const x = point[1], y = point[0];
+      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const xi = polygon[i][1], yi = polygon[i][0];
+        const xj = polygon[j][1], yj = polygon[j][0];
+        const intersect = ((yi > y) !== (yj > y)) &&
+          (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
 
-    L.polyline(beachLine, {
-      color: '#f1c40f',
-      weight: 2,
-      opacity: 0.4,
-      dashArray: '5, 5'
-    }).addTo(map).bindPopup('🏖️ Береговая линия');
+    function calcDistance(points) {
+      if (points.length < 2) return 0;
+      let total = 0;
+      for (let i = 1; i < points.length; i++) {
+        total += map.distance(points[i-1], points[i]);
+      }
+      return total;
+    }
 
-    // Подписи районов
-    const labels = [
-      { lat: 12.275, lng: 109.185, text: '📍 СЕВЕР' },
-      { lat: 12.240, lng: 109.180, text: '📍 ЦЕНТР' },
-      { lat: 12.205, lng: 109.178, text: '📍 ЮГ' }
-    ];
-
-    labels.forEach(l => {
-      L.marker([l.lat, l.lng], {
-        icon: L.divIcon({
-          className: 'region-label',
-          html: `<div style="
-            color: white;
-            font-size: 14px;
-            font-weight: bold;
-            text-shadow: 0 0 12px rgba(0,0,0,0.9);
-            background: rgba(0,0,0,0.5);
-            padding: 4px 12px;
-            border-radius: 8px;
-            border-left: 3px solid #f1c40f;
-          ">${l.text}</div>`,
-          iconSize: [120, 30],
-          iconAnchor: [60, 15]
-        }),
-        interactive: false
-      }).addTo(map);
-    });
+    function isLoopClosed(points) {
+      if (points.length < 5) return false;
+      return map.distance(points[0], points[points.length-1]) < 50;
+    }
 
     // ============================================================
-    // АВТОЦЕНТРИРОВАНИЕ ПО GPS (если доступно)
+    // UI
     // ============================================================
-    if (navigator.geolocation) {
+    function updateUI() {
+      pointsSpan.textContent = '📍 ' + route.length;
+      distanceSpan.textContent = '📏 ' + Math.round(calcDistance(route)) + ' м';
+      zoneCountSpan.textContent = '🏛️ ' + capturedZones.size + '/3';
+      
+      if (isLoopClosed(route) && route.length > 0) {
+        loopSpan.textContent = '🔒 ПЕТЛЯ!';
+        loopSpan.className = 'badge-green';
+      } else {
+        loopSpan.textContent = '🔓 Не замкнуто';
+        loopSpan.className = 'badge-gray';
+      }
+
+      statsContent.innerHTML = capturedZones.size > 0 
+        ? `<div class="stat-item">🏆 Зон: ${capturedZones.size}/3</div>
+           <div class="stat-item" style="border-bottom:none;color:#2ecc71;">${Math.round(capturedZones.size / 3 * 100)}% города</div>`
+        : '⬜ Ни одной';
+    }
+
+    // ============================================================
+    // УПРАВЛЕНИЕ БЕГОМ
+    // ============================================================
+    function startRun() {
+      route = [];
+      isRunning = true;
+      actionBtn.textContent = '⏹ СТОП';
+      actionBtn.className = 'stop-btn';
+      if (polyline) { map.removeLayer(polyline); polyline = null; }
+
       navigator.geolocation.getCurrentPosition(
         pos => {
-          map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+          route.push([pos.coords.latitude, pos.coords.longitude]);
+          updateUI();
         },
         () => {},
         { enableHighAccuracy: true }
       );
+
+      watchId = navigator.geolocation.watchPosition(
+        pos => {
+          const p = [pos.coords.latitude, pos.coords.longitude];
+          route.push(p);
+          if (polyline) map.removeLayer(polyline);
+          polyline = L.polyline(route, { color: '#e74c3c', weight: 4, opacity: 0.9 }).addTo(map);
+          map.setView(p, 15);
+          updateUI();
+        },
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 2000 }
+      );
     }
 
-    console.log('🏛️ Превью зон Нячанга загружено!');
-    console.log(`📍 Зон на карте: ${zones.length}`);
+    function stopRun() {
+      if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+      isRunning = false;
+      actionBtn.textContent = '🏃 СТАРТ';
+      actionBtn.className = '';
+
+      if (route.length < 5) {
+        alert('❌ Слишком короткий маршрут');
+        return;
+      }
+
+      if (isLoopClosed(route)) {
+        checkZoneCapture(route);
+        const count = capturedZones.size;
+        alert(`🏆 Захвачено ${count} зон из 3!`);
+        if (count === 3) alert('🎉 ТЫ ЗАХВАТИЛ ВЕСЬ НЯЧАНГ!');
+      } else {
+        alert('❌ Маршрут не замкнут! Вернись в старт (< 50 м)');
+      }
+      updateUI();
+    }
+
+    function resetGame() {
+      if (isRunning) {
+        if (watchId) navigator.geolocation.clearWatch(watchId);
+        isRunning = false;
+        actionBtn.textContent = '🏃 СТАРТ';
+        actionBtn.className = '';
+      }
+      capturedZones.clear();
+      route = [];
+      if (polyline) { map.removeLayer(polyline); polyline = null; }
+      drawZones();
+      updateUI();
+    }
+
+    // ============================================================
+    // КНОПКИ
+    // ============================================================
+    actionBtn.addEventListener('click', () => isRunning ? stopRun() : startRun());
+    resetBtn.addEventListener('click', resetGame);
+
+    // ============================================================
+    // ЗАПУСК
+    // ============================================================
+    drawZones();
+    updateUI();
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => map.setView([pos.coords.latitude, pos.coords.longitude], 13),
+        () => {},
+        { enableHighAccuracy: true }
+      );
+    }
   </script>
 </body>
 </html>
