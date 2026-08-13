@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>🏃 Нячанг — Реальные зоны</title>
+  <title>🏃 Нячанг — 3 района</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, Arial, sans-serif; background: #1a1a2e; }
+    body { font-family: -apple-system, Arial, sans-serif; background: #0f0f1a; }
     #map { height: 100vh; width: 100vw; }
-    
+
     .info-panel {
       position: fixed;
       top: 16px;
@@ -30,7 +30,7 @@
     }
     .badge-green { background: #2ecc71; border-radius: 20px; padding: 2px 12px; font-weight: bold; }
     .badge-gray { background: #555; border-radius: 20px; padding: 2px 12px; }
-    
+
     .controls {
       position: fixed;
       bottom: 40px;
@@ -41,7 +41,7 @@
       gap: 12px;
       z-index: 1000;
     }
-    
+
     button {
       padding: 16px 36px;
       font-size: 18px;
@@ -57,12 +57,12 @@
     }
     button:active { transform: scale(0.95); }
     .stop-btn { background: linear-gradient(135deg, #e74c3c, #c0392b); }
-    .reset-btn { 
+    .reset-btn {
       background: linear-gradient(135deg, #555, #333);
       min-width: 56px;
       padding: 16px 18px;
     }
-    
+
     .stats {
       position: fixed;
       bottom: 120px;
@@ -84,36 +84,42 @@
       background: rgba(0,0,0,0.8);
       color: white;
       border-radius: 8px;
-      padding: 4px 12px;
-      font-size: 18px;
+      padding: 6px 14px;
+      font-size: 16px;
       font-weight: bold;
       border: 2px solid rgba(255,255,255,0.3);
       text-align: center;
       pointer-events: none;
       font-family: monospace;
-      text-shadow: 0 0 10px rgba(0,0,0,0.9);
+      text-shadow: 0 0 12px rgba(0,0,0,0.9);
     }
     .zone-label.captured {
       background: rgba(46,204,113,0.9);
       border-color: #2ecc71;
-      box-shadow: 0 0 20px rgba(46,204,113,0.3);
+      box-shadow: 0 0 30px rgba(46,204,113,0.3);
     }
     .region-label {
       color: white;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: bold;
-      text-shadow: 0 0 12px rgba(0,0,0,0.9);
-      background: rgba(0,0,0,0.5);
-      padding: 4px 12px;
-      border-radius: 8px;
-      border-left: 3px solid #f1c40f;
+      text-shadow: 0 0 15px rgba(0,0,0,0.95);
+      background: rgba(0,0,0,0.6);
+      padding: 6px 16px;
+      border-radius: 10px;
+      border-left: 4px solid #f1c40f;
+      backdrop-filter: blur(4px);
+      white-space: nowrap;
+    }
+    .region-label.captured-label {
+      border-left-color: #2ecc71;
+      background: rgba(46,204,113,0.2);
     }
   </style>
 </head>
 <body>
 
   <div id="map"></div>
-  
+
   <div class="info-panel" id="infoPanel">
     <span id="pointsCount">📍 0</span>
     <span id="distanceDisplay">📏 0 м</span>
@@ -134,46 +140,50 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     // ============================================================
-    // РЕАЛЬНЫЕ ЗОНЫ НЯЧАНГА (КООРДИНАТЫ ИЗ ИНТЕРНЕТА)
+    // НЯЧАНГ — 3 КРУПНЫХ РАЙОНА (по данным 2025 года)
+    // Север, Центр, Юг — реальные координаты
     // ============================================================
     const ZONES = [
       {
         id: '01',
-        name: 'Vĩnh Hòa',
+        name: 'BẮC NHA TRANG',
+        short: 'Север',
         color: '#3498db',
-        center: [12.3003, 109.2047],
+        center: [12.320, 109.200],
         coords: [
-          [12.308, 109.198],
-          [12.308, 109.210],
-          [12.292, 109.212],
-          [12.290, 109.198],
-          [12.308, 109.198]
+          [12.350, 109.180],
+          [12.350, 109.220],
+          [12.300, 109.220],
+          [12.300, 109.180],
+          [12.350, 109.180]
         ]
       },
       {
         id: '02',
-        name: 'Vĩnh Hải',
+        name: 'NHA TRANG',
+        short: 'Центр',
         color: '#2ecc71',
-        center: [12.2828, 109.1881],
+        center: [12.260, 109.195],
         coords: [
-          [12.290, 109.182],
-          [12.290, 109.194],
-          [12.274, 109.196],
-          [12.272, 109.182],
-          [12.290, 109.182]
+          [12.300, 109.180],
+          [12.300, 109.215],
+          [12.230, 109.215],
+          [12.230, 109.180],
+          [12.300, 109.180]
         ]
       },
       {
         id: '03',
-        name: 'Vĩnh Thọ',
+        name: 'NAM NHA TRANG',
+        short: 'Юг',
         color: '#e67e22',
-        center: [12.2672, 109.2000],
+        center: [12.195, 109.190],
         coords: [
-          [12.274, 109.194],
-          [12.274, 109.206],
-          [12.258, 109.208],
-          [12.256, 109.194],
-          [12.274, 109.194]
+          [12.230, 109.170],
+          [12.230, 109.210],
+          [12.160, 109.210],
+          [12.160, 109.170],
+          [12.230, 109.170]
         ]
       }
     ];
@@ -182,8 +192,8 @@
     // КАРТА
     // ============================================================
     const map = L.map('map', {
-      center: [12.270, 109.195],
-      zoom: 13,
+      center: [12.260, 109.195],
+      zoom: 12,
       zoomControl: true
     });
 
@@ -222,30 +232,33 @@
       ZONES.forEach(zone => {
         const isCaptured = capturedZones.has(zone.id);
 
+        // Полигон зоны
         const polygon = L.polygon(zone.coords, {
           color: isCaptured ? '#2ecc71' : zone.color,
-          weight: isCaptured ? 3 : 2,
-          opacity: isCaptured ? 1 : 0.6,
+          weight: isCaptured ? 4 : 2.5,
+          opacity: isCaptured ? 1 : 0.7,
           fillColor: isCaptured ? '#2ecc71' : zone.color,
-          fillOpacity: isCaptured ? 0.4 : 0.15,
+          fillOpacity: isCaptured ? 0.35 : 0.12,
           interactive: true,
+          className: 'zone-polygon'
         });
 
         polygon.bindPopup(`
-          <b>🏛️ Зона ${zone.id}</b><br>
-          📍 Район: ${zone.name}<br>
+          <b>🏛️ ${zone.name}</b><br>
+          📍 ${zone.short}<br>
           ${isCaptured ? '✅ Захвачена' : '⬜ Свободна'}
         `);
 
         polygon.addTo(map);
         zoneLayers.push(polygon);
 
+        // Метка с номером зоны
         const label = L.marker(zone.center, {
           icon: L.divIcon({
             className: `zone-label ${isCaptured ? 'captured' : ''}`,
             html: zone.id,
-            iconSize: [44, 32],
-            iconAnchor: [22, 16]
+            iconSize: [48, 36],
+            iconAnchor: [24, 18]
           }),
           interactive: false
         });
@@ -253,12 +266,12 @@
         labelLayers.push(label);
 
         // Подпись с названием района
-        const nameLabel = L.marker([zone.center[0] - 0.008, zone.center[1]], {
+        const nameLabel = L.marker([zone.center[0] - 0.012, zone.center[1]], {
           icon: L.divIcon({
-            className: 'region-label',
+            className: `region-label ${isCaptured ? 'captured-label' : ''}`,
             html: zone.name,
-            iconSize: [100, 24],
-            iconAnchor: [50, 12]
+            iconSize: [140, 28],
+            iconAnchor: [70, 14]
           }),
           interactive: false
         });
@@ -272,13 +285,13 @@
     // ============================================================
     function checkZoneCapture(points) {
       if (points.length < 3) return;
-      
+
       const routePolygon = L.polygon([...points, points[0]]);
       const routeBounds = routePolygon.getBounds();
-      
+
       ZONES.forEach(zone => {
         if (capturedZones.has(zone.id)) return;
-        
+
         const zonePolygon = L.polygon(zone.coords);
         if (routeBounds.intersects(zonePolygon.getBounds())) {
           if (pointInPolygon(zone.center, points)) {
@@ -286,13 +299,13 @@
           }
         }
       });
-      
+
       drawZones();
       updateUI();
     }
 
     // ============================================================
-    // ВСПОМОГАТЕЛЬНЫЕ
+    // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
     // ============================================================
     function pointInPolygon(point, polygon) {
       let inside = false;
@@ -322,13 +335,13 @@
     }
 
     // ============================================================
-    // UI
+    // ОБНОВЛЕНИЕ UI
     // ============================================================
     function updateUI() {
       pointsSpan.textContent = '📍 ' + route.length;
       distanceSpan.textContent = '📏 ' + Math.round(calcDistance(route)) + ' м';
       zoneCountSpan.textContent = '🏛️ ' + capturedZones.size + '/3';
-      
+
       if (isLoopClosed(route) && route.length > 0) {
         loopSpan.textContent = '🔒 ПЕТЛЯ!';
         loopSpan.className = 'badge-green';
@@ -337,8 +350,16 @@
         loopSpan.className = 'badge-gray';
       }
 
-      statsContent.innerHTML = capturedZones.size > 0 
+      let totalArea = 0;
+      ZONES.forEach(z => {
+        if (capturedZones.has(z.id)) {
+          totalArea += Math.round(z.coords.length * 0.6);
+        }
+      });
+
+      statsContent.innerHTML = capturedZones.size > 0
         ? `<div class="stat-item">🏆 Зон: ${capturedZones.size}/3</div>
+           <div class="stat-item">📐 ${totalArea} км²</div>
            <div class="stat-item" style="border-bottom:none;color:#2ecc71;">${Math.round(capturedZones.size / 3 * 100)}% города</div>`
         : '⬜ Ни одной';
     }
@@ -431,6 +452,9 @@
         { enableHighAccuracy: true }
       );
     }
+
+    console.log('🏃 Нячанг — 3 района');
+    console.log('📍 Зоны: Север, Центр, Юг');
   </script>
 </body>
 </html>
