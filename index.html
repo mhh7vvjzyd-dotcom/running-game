@@ -774,3 +774,56 @@
     }
 
     function resetGame() {
+      if (isRunning) {
+        if (watchId) navigator.geolocation.clearWatch(watchId);
+        isRunning = false;
+        actionBtn.textContent = '🏃 СТАРТ';
+        actionBtn.className = '';
+      }
+      if (confirm('Сбросить все зоны?')) {
+        zonesData.forEach(z => {
+          z.capturedAt = null;
+          z.owner = null;
+        });
+        capturedZones.clear();
+        route = [];
+        highlightedZone = null;
+        if (polyline) { map.removeLayer(polyline); polyline = null; }
+        saveState();
+        drawZones();
+        updateUI();
+        statsContent.innerHTML = '⬜ Кликни на зону';
+      }
+    }
+
+    // ============================================================
+    // КНОПКИ
+    // ============================================================
+    actionBtn.addEventListener('click', () => isRunning ? stopRun() : startRun());
+    resetBtn.addEventListener('click', resetGame);
+
+    // ============================================================
+    // ГЕОЛОКАЦИЯ
+    // ============================================================
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+          L.marker([pos.coords.latitude, pos.coords.longitude])
+            .addTo(map)
+            .bindPopup('📍 Вы здесь');
+        },
+        () => {},
+        { enableHighAccuracy: true }
+      );
+    }
+
+    // ============================================================
+    // ЗАПУСК
+    // ============================================================
+    loadState();
+    drawZones();
+    console.log('🏃 8 зон + турнирная таблица');
+  </script>
+</body>
+</html>
