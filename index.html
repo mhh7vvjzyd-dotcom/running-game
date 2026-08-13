@@ -168,7 +168,7 @@
   <div id="map"></div>
 
   <div class="info-panel" id="infoPanel">
-    <span id="zoneCount">🏛️ Зон: 0/15</span>
+    <span id="zoneCount">🏛️ Зон: 0/16</span>
     <span id="capturedCount">✅ Захвачено: 0</span>
     <span id="totalPoints">⭐ Очков: 0</span>
     <span id="leaderboardToggle" style="cursor:pointer;color:#2ecc71;">📊 Таблица</span>
@@ -196,10 +196,10 @@
     // ============================================================
     const PROTECTION_HOURS = 24;
     const STEAL_THRESHOLD = 0.8;
-    const BUFFER = 20; // 20 метров допуска от границы
-    const SPEED_MIN = 4; // мин. скорость бега км/ч
-    const SPEED_MAX = 25; // макс. скорость бега км/ч
-    const SEGMENT_SIZE = 10; // точек в сегменте для расчёта скорости
+    const BUFFER = 20;
+    const SPEED_MIN = 4;
+    const SPEED_MAX = 25;
+    const SEGMENT_SIZE = 10;
 
     // ============================================================
     // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
@@ -254,12 +254,10 @@
           dist += map.distance(segment[j-1], segment[j]);
         }
         
-        // Время в часах (каждая точка примерно через 2 секунды)
         const hours = (segment.length - 1) * 2 / 3600;
         if (hours === 0) continue;
-        const speed = dist / 1000 / hours; // км/ч
+        const speed = dist / 1000 / hours;
         
-        // Отбрасываем аномалии
         if (speed > 2 && speed < 30) {
           speeds.push(speed);
         }
@@ -267,11 +265,9 @@
       
       if (speeds.length === 0) return false;
       
-      // Сортируем и берём медиану
       speeds.sort((a, b) => a - b);
       const median = speeds[Math.floor(speeds.length / 2)];
       
-      // Нормальная беговая скорость: 4–25 км/ч
       return median >= SPEED_MIN && median <= SPEED_MAX;
     }
 
@@ -284,7 +280,6 @@
       if (isProtected(zone)) return false;
       if (points.length < 5) return false;
 
-      // Проверяем скорость
       if (!checkSpeed(points)) {
         alert('❌ Скорость не соответствует бегу!');
         return false;
@@ -311,10 +306,10 @@
     }
 
     // ============================================================
-    // 15 ЗОН
+    // 16 ЗОН
     // ============================================================
     const zonesData = [
-      // Зоны 01-10 — Север
+      // ===== СЕВЕР (01-10) =====
       {
         id: '01', name: 'Vĩnh Hải', sector: 'Север',
         coords: [
@@ -459,7 +454,7 @@
           [12.2584764, 109.1965357]
         ]
       },
-      // Зона 11-15 — Центр
+      // ===== ЦЕНТР (11-16) =====
       {
         id: '11', name: 'Vĩnh Mỹ', sector: 'Центр',
         coords: [
@@ -559,6 +554,24 @@
           [12.2375724, 109.1899593],
           [12.2382903, 109.1920712],
           [12.2414878, 109.1886138]
+        ]
+      },
+      {
+        id: '16', name: 'Vĩnh Khang', sector: 'Центр',
+        color: '#1abc9c',
+        coords: [
+          [12.2494454, 109.1816900],
+          [12.2493871, 109.1826855],
+          [12.2493045, 109.1828806],
+          [12.2484858, 109.1851588],
+          [12.2472335, 109.1888545],
+          [12.2469177, 109.1890094],
+          [12.2454478, 109.1880905],
+          [12.2440180, 109.1872613],
+          [12.2431884, 109.1866595],
+          [12.2409718, 109.1847595],
+          [12.2422146, 109.1825195],
+          [12.2467424, 109.1817363]
         ]
       }
     ];
@@ -1013,7 +1026,7 @@
     // ============================================================
     loadState();
     drawZones();
-    console.log('🏃 15 зон — Север (10) + Центр (5)');
+    console.log('🏃 16 зон — Север (10) + Центр (6)');
   </script>
 </body>
 </html>
