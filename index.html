@@ -109,91 +109,51 @@
       border-left-color: #2ecc71;
       background: rgba(46,204,113,0.2);
     }
+    .loading {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 18px;
+      z-index: 9999;
+      background: rgba(0,0,0,0.8);
+      padding: 20px 40px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
-  <div class="info-panel" id="infoPanel">
+  <div class="loading" id="loading">⏳ Загрузка карты...</div>
+  
+  <div class="info-panel" id="infoPanel" style="display:none;">
     <span id="pointsCount">📍 0</span>
     <span id="distanceDisplay">📏 0 м</span>
-    <span id="zoneCount">🏛️ 0/3</span>
+    <span id="zoneCount">🏛️ 0/0</span>
     <span id="loopStatus" class="badge-gray">🔓 Не замкнуто</span>
   </div>
-  <div class="stats" id="statsPanel">
+  <div class="stats" id="statsPanel" style="display:none;">
     <h4>🏅 Захвачено</h4>
     <div id="statsContent">⬜ Ни одной</div>
   </div>
-  <div class="controls">
+  <div class="controls" id="controls" style="display:none;">
     <button class="reset-btn" id="resetBtn">🗑️</button>
     <button id="actionBtn">🏃 СТАРТ</button>
   </div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     // ============================================================
-    // РЕАЛЬНЫЕ ГРАНИЦЫ РАЙОНОВ НЯЧАНГА (из GeoJSON)
-    // Данные: daohoangson/dvhcvn/data/gis/56.json
+    // ЗАГРУЗКА РЕАЛЬНЫХ ГРАНИЦ ИЗ GEOJSON
     // ============================================================
-    // Пример: 3 района с реальными контурами (сотни точек)
-    // В полной версии будут все 27 районов
-    // ============================================================
-    const ZONES = [
-      {
-        id: '01',
-        name: 'Vĩnh Hòa',
-        center: [12.325, 109.202],
-        coords: [
-          [12.3350, 109.1950], [12.3360, 109.1980], [12.3370, 109.2000],
-          [12.3380, 109.2030], [12.3375, 109.2060], [12.3360, 109.2090],
-          [12.3340, 109.2120], [12.3310, 109.2150], [12.3280, 109.2170],
-          [12.3250, 109.2180], [12.3220, 109.2185], [12.3190, 109.2180],
-          [12.3160, 109.2160], [12.3130, 109.2130], [12.3100, 109.2100],
-          [12.3080, 109.2070], [12.3070, 109.2040], [12.3060, 109.2010],
-          [12.3065, 109.1980], [12.3080, 109.1950], [12.3100, 109.1920],
-          [12.3120, 109.1900], [12.3150, 109.1880], [12.3180, 109.1870],
-          [12.3210, 109.1875], [12.3240, 109.1880], [12.3270, 109.1890],
-          [12.3300, 109.1900], [12.3320, 109.1920], [12.3340, 109.1940],
-          [12.3350, 109.1950]
-        ]
-      },
-      {
-        id: '02',
-        name: 'Vĩnh Hải',
-        center: [12.305, 109.210],
-        coords: [
-          [12.3150, 109.2050], [12.3160, 109.2070], [12.3170, 109.2090],
-          [12.3180, 109.2120], [12.3175, 109.2150], [12.3160, 109.2180],
-          [12.3140, 109.2200], [12.3110, 109.2220], [12.3080, 109.2230],
-          [12.3050, 109.2235], [12.3020, 109.2230], [12.2990, 109.2220],
-          [12.2960, 109.2200], [12.2930, 109.2170], [12.2900, 109.2140],
-          [12.2880, 109.2110], [12.2870, 109.2080], [12.2875, 109.2050],
-          [12.2880, 109.2020], [12.2900, 109.1990], [12.2920, 109.1970],
-          [12.2950, 109.1950], [12.2980, 109.1940], [12.3010, 109.1945],
-          [12.3040, 109.1950], [12.3070, 109.1960], [12.3100, 109.1980],
-          [12.3120, 109.2000], [12.3140, 109.2020], [12.3150, 109.2050]
-        ]
-      },
-      {
-        id: '03',
-        name: 'Vĩnh Phước',
-        center: [12.285, 109.215],
-        coords: [
-          [12.2950, 109.2120], [12.2960, 109.2140], [12.2970, 109.2160],
-          [12.2980, 109.2190], [12.2975, 109.2220], [12.2960, 109.2250],
-          [12.2940, 109.2270], [12.2910, 109.2290], [12.2880, 109.2300],
-          [12.2850, 109.2305], [12.2820, 109.2300], [12.2790, 109.2290],
-          [12.2760, 109.2270], [12.2730, 109.2240], [12.2700, 109.2210],
-          [12.2680, 109.2180], [12.2670, 109.2150], [12.2675, 109.2120],
-          [12.2680, 109.2090], [12.2700, 109.2060], [12.2720, 109.2040],
-          [12.2750, 109.2020], [12.2780, 109.2010], [12.2810, 109.2015],
-          [12.2840, 109.2020], [12.2870, 109.2030], [12.2900, 109.2050],
-          [12.2920, 109.2070], [12.2940, 109.2090], [12.2950, 109.2120]
-        ]
-      }
-    ];
+    const loading = document.getElementById('loading');
+    const infoPanel = document.getElementById('infoPanel');
+    const statsPanel = document.getElementById('statsPanel');
+    const controls = document.getElementById('controls');
 
-    // ============================================================
-    // КАРТА
-    // ============================================================
+    // Карта
     const map = L.map('map', {
       center: [12.250, 109.210],
       zoom: 13,
@@ -214,7 +174,9 @@
     let polyline = null;
     let zoneLayers = [];
     let labelLayers = [];
+    let allZones = [];
 
+    // DOM
     const pointsSpan = document.getElementById('pointsCount');
     const distanceSpan = document.getElementById('distanceDisplay');
     const zoneCountSpan = document.getElementById('zoneCount');
@@ -222,6 +184,59 @@
     const actionBtn = document.getElementById('actionBtn');
     const resetBtn = document.getElementById('resetBtn');
     const statsContent = document.getElementById('statsContent');
+
+    // ============================================================
+    // ЗАГРУЗКА ДАННЫХ
+    // ============================================================
+    async function loadData() {
+      try {
+        const response = await fetch(
+          'https://raw.githubusercontent.com/daohoangson/dvhcvn/master/data/gis/56.json'
+        );
+        const data = await response.json();
+
+        // Ищем город Нячанг (код 568)
+        const nhaTrang = data['56'].level2s.find(l => l.level2_id === '568');
+        if (!nhaTrang) {
+          loading.textContent = '❌ Город Нячанг не найден';
+          return;
+        }
+
+        // Извлекаем координаты районов (level3s)
+        if (!nhaTrang.level3s) {
+          loading.textContent = '❌ Районы не найдены';
+          return;
+        }
+
+        allZones = nhaTrang.level3s.map((district, index) => {
+          const coords = district.coordinates[0].map(coord => [coord[1], coord[0]]);
+          const center = coords.reduce(
+            (acc, p) => [acc[0] + p[0] / coords.length, acc[1] + p[1] / coords.length],
+            [0, 0]
+          );
+          return {
+            id: String(index + 1).padStart(2, '0'),
+            name: district.name,
+            center: center,
+            coords: coords
+          };
+        });
+
+        loading.textContent = `✅ Загружено ${allZones.length} районов`;
+        setTimeout(() => {
+          loading.style.display = 'none';
+          infoPanel.style.display = 'flex';
+          statsPanel.style.display = 'block';
+          controls.style.display = 'flex';
+          drawZones();
+          updateUI();
+        }, 500);
+
+      } catch (e) {
+        loading.textContent = '❌ Ошибка загрузки: ' + e.message;
+        console.error(e);
+      }
+    }
 
     // ============================================================
     // РИСОВАНИЕ ЗОН
@@ -232,15 +247,18 @@
       zoneLayers = [];
       labelLayers = [];
 
-      ZONES.forEach(zone => {
+      const colors = ['#3498db','#2ecc71','#e74c3c','#f39c12','#9b59b6','#1abc9c','#e67e22','#2c3e50'];
+
+      allZones.forEach((zone, index) => {
         const isCaptured = capturedZones.has(zone.id);
+        const color = colors[index % colors.length];
 
         const polygon = L.polygon(zone.coords, {
-          color: isCaptured ? '#2ecc71' : '#3498db',
-          weight: isCaptured ? 3 : 2,
-          opacity: isCaptured ? 1 : 0.6,
-          fillColor: isCaptured ? '#2ecc71' : 'rgba(52,152,219,0.2)',
-          fillOpacity: isCaptured ? 0.4 : 0.15,
+          color: isCaptured ? '#2ecc71' : color,
+          weight: isCaptured ? 3 : 1.5,
+          opacity: isCaptured ? 1 : 0.5,
+          fillColor: isCaptured ? '#2ecc71' : color,
+          fillOpacity: isCaptured ? 0.35 : 0.1,
           interactive: true,
         });
 
@@ -256,26 +274,19 @@
           icon: L.divIcon({
             className: `zone-label ${isCaptured ? 'captured' : ''}`,
             html: zone.id,
-            iconSize: [30, 22],
-            iconAnchor: [15, 11]
+            iconSize: [26, 20],
+            iconAnchor: [13, 10]
           }),
           interactive: false
         });
         label.addTo(map);
         labelLayers.push(label);
-
-        const nameLabel = L.marker([zone.center[0] - 0.008, zone.center[1]], {
-          icon: L.divIcon({
-            className: `region-label ${isCaptured ? 'captured-label' : ''}`,
-            html: zone.name,
-            iconSize: [100, 20],
-            iconAnchor: [50, 10]
-          }),
-          interactive: false
-        });
-        nameLabel.addTo(map);
-        labelLayers.push(nameLabel);
       });
+
+      // Центрируем карту по первому району
+      if (allZones.length > 0) {
+        map.setView(allZones[0].center, 13);
+      }
     }
 
     // ============================================================
@@ -287,7 +298,7 @@
       const routePolygon = L.polygon([...points, points[0]]);
       const routeBounds = routePolygon.getBounds();
 
-      ZONES.forEach(zone => {
+      allZones.forEach(zone => {
         if (capturedZones.has(zone.id)) return;
 
         const zonePolygon = L.polygon(zone.coords);
@@ -338,7 +349,7 @@
     function updateUI() {
       pointsSpan.textContent = '📍 ' + route.length;
       distanceSpan.textContent = '📏 ' + Math.round(calcDistance(route)) + ' м';
-      zoneCountSpan.textContent = '🏛️ ' + capturedZones.size + '/3';
+      zoneCountSpan.textContent = '🏛️ ' + capturedZones.size + '/' + allZones.length;
 
       if (isLoopClosed(route) && route.length > 0) {
         loopSpan.textContent = '🔒 ПЕТЛЯ!';
@@ -349,8 +360,8 @@
       }
 
       statsContent.innerHTML = capturedZones.size > 0
-        ? `<div class="stat-item">🏆 Зон: ${capturedZones.size}/3</div>
-           <div class="stat-item" style="border-bottom:none;color:#2ecc71;">${Math.round(capturedZones.size / 3 * 100)}% города</div>`
+        ? `<div class="stat-item">🏆 Зон: ${capturedZones.size}/${allZones.length}</div>
+           <div class="stat-item" style="border-bottom:none;color:#2ecc71;">${Math.round(capturedZones.size / allZones.length * 100)}% города</div>`
         : '⬜ Ни одной';
     }
 
@@ -401,8 +412,8 @@
       if (isLoopClosed(route)) {
         checkZoneCapture(route);
         const count = capturedZones.size;
-        alert(`🏆 Захвачено ${count} зон из 3!`);
-        if (count === 3) alert('🎉 ТЫ ЗАХВАТИЛ ВЕСЬ НЯЧАНГ!');
+        alert(`🏆 Захвачено ${count} зон из ${allZones.length}!`);
+        if (count === allZones.length) alert('🎉 ТЫ ЗАХВАТИЛ ВЕСЬ НЯЧАНГ!');
       } else {
         alert('❌ Маршрут не замкнут! Вернись в старт (< 50 м)');
       }
@@ -432,8 +443,7 @@
     // ============================================================
     // ЗАПУСК
     // ============================================================
-    drawZones();
-    updateUI();
+    loadData();
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -443,7 +453,7 @@
       );
     }
 
-    console.log('🏃 Нячанг — Точные границы (3 района)');
+    console.log('🏃 Нячанг — Загрузка реальных границ из GeoJSON');
   </script>
 </body>
 </html>
