@@ -117,20 +117,6 @@
       filter: drop-shadow(0 0 15px rgba(46, 204, 113, 0.8));
     }
 
-    .point-label {
-      background: rgba(0,0,0,0.7);
-      color: white;
-      border-radius: 50%;
-      width: 22px;
-      height: 22px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 9px;
-      font-weight: bold;
-      border: 2px solid #f1c40f;
-    }
-
     .leaderboard {
       position: fixed;
       left: 16px;
@@ -182,7 +168,7 @@
   <div id="map"></div>
 
   <div class="info-panel" id="infoPanel">
-    <span id="zoneCount">🏛️ Зон: 0/19</span>
+    <span id="zoneCount">🏛️ Зон: 0/20</span>
     <span id="capturedCount">✅ Захвачено: 0</span>
     <span id="totalPoints">⭐ Очков: 0</span>
     <span id="leaderboardToggle" style="cursor:pointer;color:#2ecc71;">📊 Таблица</span>
@@ -320,7 +306,7 @@
     }
 
     // ============================================================
-    // 19 ЗОН
+    // 20 ЗОН
     // ============================================================
     const zonesData = [
       // ===== СЕВЕР (01-10) =====
@@ -628,7 +614,7 @@
           [12.2335969, 109.1976897]
         ]
       },
-      // ===== ЮГ (19) =====
+      // ===== ЮГ (19-20) =====
       {
         id: '19',
         name: 'Vĩnh Nam',
@@ -660,6 +646,29 @@
           [12.2171356, 109.1998791],
           [12.2188592, 109.2037059],
           [12.2194267, 109.2045595]
+        ]
+      },
+      {
+        id: '20',
+        name: 'Vĩnh Hòa',
+        sector: 'Юг',
+        color: '#27ae60',
+        coords: [
+          [12.2141153, 109.2099551],
+          [12.2192547, 109.2046990],
+          [12.2188847, 109.2037549],
+          [12.2171402, 109.1999230],
+          [12.2168259, 109.1983613],
+          [12.2166526, 109.1981849],
+          [12.2146796, 109.1969786],
+          [12.2142166, 109.1966410],
+          [12.2129163, 109.1980539],
+          [12.2100398, 109.2012316],
+          [12.2104298, 109.2027491],
+          [12.2109390, 109.2045565],
+          [12.2119339, 109.2068676],
+          [12.2125529, 109.2083287],
+          [12.2129294, 109.2087042]
         ]
       }
     ];
@@ -719,7 +728,6 @@
     let polyline = null;
     let zoneLayers = [];
     let labelLayers = [];
-    let pointLayers = [];
     let leaderboardVisible = true;
 
     const zoneCountSpan = document.getElementById('zoneCount');
@@ -800,10 +808,8 @@
     function drawZones() {
       zoneLayers.forEach(l => map.removeLayer(l));
       labelLayers.forEach(l => map.removeLayer(l));
-      pointLayers.forEach(l => map.removeLayer(l));
       zoneLayers = [];
       labelLayers = [];
-      pointLayers = [];
 
       zonesData.forEach((zone) => {
         const isMine = zone.owner === 'me';
@@ -1117,7 +1123,7 @@
     // ============================================================
     loadState();
     drawZones();
-    console.log('🏃 19 зон — Север (10) + Центр (8) + Юг (1)');
+    console.log('🏃 20 зон — Север (10) + Центр (8) + Юг (2)');
   </script>
 </body>
 </html>
