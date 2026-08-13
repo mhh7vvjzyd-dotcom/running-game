@@ -112,20 +112,10 @@
       background: rgba(100,100,100,0.7);
       border-color: #666;
     }
-    .zone-label.highlight {
-      box-shadow: 0 0 30px rgba(255,255,255,0.3);
-      border-color: #fff;
-    }
 
-    /* ШТРИХОВКА ДЛЯ ВЫДЕЛЕННОЙ ЗОНЫ */
-    .highlight-pattern {
-      background-image: repeating-linear-gradient(
-        45deg,
-        rgba(46, 204, 113, 0.0) 0px,
-        rgba(46, 204, 113, 0.0) 10px,
-        rgba(46, 204, 113, 0.5) 10px,
-        rgba(46, 204, 113, 0.5) 12px
-      ) !important;
+    /* Подсветка при клике */
+    .highlighted-zone {
+      filter: drop-shadow(0 0 15px rgba(46, 204, 113, 0.8));
     }
   </style>
 </head>
@@ -303,6 +293,7 @@
     // СОСТОЯНИЕ
     // ============================================================
     let highlightedZone = null;
+    let highlightLayer = null;
 
     function loadState() {
       try {
@@ -354,7 +345,6 @@
     let polyline = null;
     let zoneLayers = [];
     let labelLayers = [];
-    let highlightLayer = null;
 
     const zoneCountSpan = document.getElementById('zoneCount');
     const capturedCountSpan = document.getElementById('capturedCount');
@@ -369,10 +359,6 @@
     function drawZones() {
       zoneLayers.forEach(l => map.removeLayer(l));
       labelLayers.forEach(l => map.removeLayer(l));
-      if (highlightLayer) {
-        map.removeLayer(highlightLayer);
-        highlightLayer = null;
-      }
       zoneLayers = [];
       labelLayers = [];
 
@@ -390,48 +376,44 @@
           color = '#666';
           fillColor = 'rgba(100,100,100,0.05)';
           fillOpacity = 0.05;
-          weight = 2;
+          weight = isHighlighted ? 5 : 2;
           labelClass = 'free';
           dashArray = '5, 5';
         } else if (isMine) {
           if (protected_) {
-            color = '#2ecc71';
-            fillColor = 'rgba(46,204,113,0.25)';
-            fillOpacity = 0.25;
-            weight = 4;
+            color = isHighlighted ? '#6ee7b9' : '#2ecc71';
+            fillColor = isHighlighted ? 'rgba(46,204,113,0.5)' : 'rgba(46,204,113,0.25)';
+            fillOpacity = isHighlighted ? 0.5 : 0.25;
+            weight = isHighlighted ? 6 : 4;
             labelClass = 'captured';
             dashArray = null;
           } else {
-            color = '#f1c40f';
-            fillColor = 'rgba(241,196,15,0.25)';
-            fillOpacity = 0.25;
-            weight = 4;
+            color = isHighlighted ? '#f5d742' : '#f1c40f';
+            fillColor = isHighlighted ? 'rgba(241,196,15,0.5)' : 'rgba(241,196,15,0.25)';
+            fillOpacity = isHighlighted ? 0.5 : 0.25;
+            weight = isHighlighted ? 6 : 4;
             labelClass = 'vulnerable';
             dashArray = null;
           }
         } else {
-          color = '#e74c3c';
-          fillColor = 'rgba(231,76,60,0.2)';
-          fillOpacity = 0.2;
-          weight = 3;
+          color = isHighlighted ? '#ff6b6b' : '#e74c3c';
+          fillColor = isHighlighted ? 'rgba(231,76,60,0.4)' : 'rgba(231,76,60,0.2)';
+          fillOpacity = isHighlighted ? 0.4 : 0.2;
+          weight = isHighlighted ? 5 : 3;
           labelClass = 'other';
           dashArray = null;
-        }
-
-        if (isHighlighted) {
-          labelClass += ' highlight';
         }
 
         const polygon = L.polygon(zone.coords, {
           color: color,
           weight: weight,
-          opacity: 1,
+          opacity: isHighlighted ? 1 : 0.9,
           fillColor: fillColor,
           fillOpacity: fillOpacity,
           interactive: true,
           smoothFactor: 1,
           dashArray: dashArray,
-          className: isHighlighted ? 'highlight-pattern' : ''
+          className: isHighlighted ? 'highlighted-zone' : ''
         });
 
         polygon.bindPopup(`
@@ -724,7 +706,7 @@
     // ============================================================
     loadState();
     drawZones();
-    console.log('🏃 Стратегическая игра — штриховка при клике');
+    console.log('🏃 Стратегическая игра — подсветка клика');
   </script>
 </body>
 </html>
