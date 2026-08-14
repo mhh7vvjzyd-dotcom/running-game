@@ -176,11 +176,92 @@
       background: rgba(46,204,113,0.15);
       box-shadow: 0 0 15px rgba(46,204,113,0.15);
     }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(8px);
+    }
+    .modal {
+      background: #1a1a2e;
+      padding: 32px 28px;
+      border-radius: 20px;
+      max-width: 340px;
+      width: 90%;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .modal h2 {
+      color: white;
+      font-size: 20px;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .modal p {
+      color: #aaa;
+      font-size: 14px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .modal input {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: white;
+      font-size: 16px;
+      outline: none;
+      transition: 0.3s;
+      text-align: center;
+    }
+    .modal input:focus {
+      border-color: #2ecc71;
+      background: rgba(46,204,113,0.08);
+    }
+    .modal button {
+      width: 100%;
+      margin-top: 16px;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, #2ecc71, #27ae60);
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .modal button:hover { transform: scale(0.98); }
+    .modal .error {
+      color: #e74c3c;
+      font-size: 13px;
+      text-align: center;
+      margin-top: 10px;
+      display: none;
+    }
   </style>
 </head>
 <body>
 
   <div id="map"></div>
+
+  <div class="modal-overlay" id="nameModal">
+    <div class="modal">
+      <h2>🏃 Добро пожаловать!</h2>
+      <p>Введите ваш игровой никнейм</p>
+      <input type="text" id="usernameInput" placeholder="Например: AlexRunner" maxlength="20" />
+      <button id="saveNameBtn">Продолжить</button>
+      <div class="error" id="nameError">⚠️ Введите никнейм (минимум 2 символа)</div>
+    </div>
+  </div>
 
   <div class="lang-switcher">
     <button class="lang-btn-small active" data-lang="ru" id="langRu">🇷🇺</button>
@@ -189,6 +270,7 @@
   </div>
 
   <div class="info-panel" id="infoPanel">
+    <span id="playerDisplay">👤 Гость</span>
     <span id="zoneCount">🏛️ Зон: 0/22</span>
     <span id="capturedCount">✅ Захвачено: 0</span>
     <span id="totalPoints">⭐ Очков: 0</span>
@@ -213,6 +295,12 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     // ============================================================
+    // SUPABASE НАСТРОЙКИ
+    // ============================================================
+    const SUPABASE_URL = 'https://onmcvmozceyatcmxmnnb.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ubWN2bW96Y2V5YXRjbXhtbm5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2OTg0NTksImV4cCI6MjEwMjI3NDQ1OX0.WswNX824baDjb05JAm8EJhmpIvmztsaqLyP3x4kevOo';
+
+    // ============================================================
     // ПЕРЕВОДЫ
     // ============================================================
     const LANG = {
@@ -225,7 +313,6 @@
         start: '🏃 СТАРТ',
         stop: '⏹ СТОП',
         free: '⬜ Свободна',
-        capturedLabel: '✅ Захвачена',
         vulnerable: '⚠️ Уязвима',
         protected: '🛡️ Защищена',
         other: '👤 Занята другим игроком',
@@ -245,7 +332,9 @@
         perimeter: 'Периметр',
         sector: 'Сектор',
         owner: 'Владелец',
-        noZones: 'Маршрут не захватил ни одной зоны'
+        noZones: 'Маршрут не захватил ни одной зоны',
+        saving: 'Сохранение...',
+        saved: 'Сохранено!'
       },
       en: {
         zones: 'Zones',
@@ -256,7 +345,6 @@
         start: '🏃 START',
         stop: '⏹ STOP',
         free: '⬜ Free',
-        capturedLabel: '✅ Captured',
         vulnerable: '⚠️ Vulnerable',
         protected: '🛡️ Protected',
         other: '👤 Occupied',
@@ -276,7 +364,9 @@
         perimeter: 'Perimeter',
         sector: 'Sector',
         owner: 'Owner',
-        noZones: 'Route captured no zones'
+        noZones: 'Route captured no zones',
+        saving: 'Saving...',
+        saved: 'Saved!'
       },
       vi: {
         zones: 'Khu vực',
@@ -287,7 +377,6 @@
         start: '🏃 BẮT ĐẦU',
         stop: '⏹ DỪNG',
         free: '⬜ Trống',
-        capturedLabel: '✅ Đã chiếm',
         vulnerable: '⚠️ Dễ bị tấn công',
         protected: '🛡️ Được bảo vệ',
         other: '👤 Đã có chủ',
@@ -307,11 +396,15 @@
         perimeter: 'Chu vi',
         sector: 'Khu vực',
         owner: 'Chủ sở hữu',
-        noZones: 'Đường chạy không chiếm được khu vực nào'
+        noZones: 'Đường chạy không chiếm được khu vực nào',
+        saving: 'Đang lưu...',
+        saved: 'Đã lưu!'
       }
     };
 
     let currentLang = 'ru';
+    let currentPlayer = null;
+    let playerId = null;
 
     function t(key) {
       return LANG[currentLang][key] || key;
@@ -338,6 +431,178 @@
       updateUI();
     }
 
+    document.getElementById('langRu').addEventListener('click', () => setLanguage('ru'));
+    document.getElementById('langEn').addEventListener('click', () => setLanguage('en'));
+    document.getElementById('langVi').addEventListener('click', () => setLanguage('vi'));
+
+    // ============================================================
+    // SUPABASE КЛИЕНТ
+    // ============================================================
+    const supabase = {
+      url: SUPABASE_URL,
+      key: SUPABASE_ANON_KEY,
+      async query(endpoint, options = {}) {
+        const res = await fetch(`${this.url}/rest/v1/${endpoint}`, {
+          ...options,
+          headers: {
+            'apikey': this.key,
+            'Authorization': `Bearer ${this.key}`,
+            'Content-Type': 'application/json',
+            ...(options.headers || {})
+          }
+        });
+        return res.json();
+      },
+      async get(table, select = '*') {
+        return this.query(table, { headers: { 'Prefer': 'return=representation' } });
+      },
+      async post(table, data) {
+        return this.query(table, {
+          method: 'POST',
+          body: JSON.stringify(data),
+          headers: { 'Prefer': 'return=representation' }
+        });
+      }
+    };
+
+    // ============================================================
+    // УПРАВЛЕНИЕ ИГРОКОМ
+    // ============================================================
+    async function registerPlayer(username) {
+      try {
+        const result = await supabase.post('players', { username });
+        if (result && result.length > 0) {
+          return result[0];
+        }
+        return null;
+      } catch (e) {
+        console.error('Ошибка регистрации:', e);
+        return null;
+      }
+    }
+
+    async function getPlayerId(username) {
+      try {
+        const players = await supabase.query(`players?username=eq.${username}&select=id`);
+        if (players && players.length > 0) {
+          return players[0].id;
+        }
+        return null;
+      } catch (e) {
+        console.error('Ошибка поиска игрока:', e);
+        return null;
+      }
+    }
+
+    async function saveCapture(playerId, zoneId) {
+      try {
+        const result = await supabase.post('captures', {
+          player_id: playerId,
+          zone_id: zoneId,
+          points: 1
+        });
+        return result;
+      } catch (e) {
+        console.error('Ошибка сохранения захвата:', e);
+        return null;
+      }
+    }
+
+    async function getCaptures() {
+      try {
+        const result = await supabase.query('captures?select=player_id,zone_id,points');
+        return result || [];
+      } catch (e) {
+        console.error('Ошибка загрузки захватов:', e);
+        return [];
+      }
+    }
+
+    async function getPlayers() {
+      try {
+        const result = await supabase.query('players?select=id,username');
+        return result || [];
+      } catch (e) {
+        console.error('Ошибка загрузки игроков:', e);
+        return [];
+      }
+    }
+
+    // ============================================================
+    // МОДАЛЬНОЕ ОКНО
+    // ============================================================
+    const modal = document.getElementById('nameModal');
+    const usernameInput = document.getElementById('usernameInput');
+    const saveBtn = document.getElementById('saveNameBtn');
+    const nameError = document.getElementById('nameError');
+
+    function showModal() {
+      modal.style.display = 'flex';
+      usernameInput.focus();
+    }
+
+    function hideModal() {
+      modal.style.display = 'none';
+    }
+
+    saveBtn.addEventListener('click', async () => {
+      const name = usernameInput.value.trim();
+      if (name.length < 2) {
+        nameError.style.display = 'block';
+        return;
+      }
+      nameError.style.display = 'none';
+      
+      // Проверяем, есть ли игрок
+      let player = await getPlayerId(name);
+      if (!player) {
+        // Создаём нового
+        const newPlayer = await registerPlayer(name);
+        if (newPlayer) {
+          player = newPlayer.id;
+        }
+      }
+      
+      if (player) {
+        playerId = player;
+        currentPlayer = name;
+        localStorage.setItem('playerName', name);
+        localStorage.setItem('playerId', player);
+        document.getElementById('playerDisplay').textContent = `👤 ${name}`;
+        hideModal();
+        await loadGameData();
+        drawZones();
+        updateLeaderboard();
+      } else {
+        nameError.textContent = '⚠️ Ошибка регистрации. Попробуй ещё раз.';
+        nameError.style.display = 'block';
+      }
+    });
+
+    usernameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') saveBtn.click();
+    });
+
+    // ============================================================
+    // ЗАГРУЗКА ДАННЫХ
+    // ============================================================
+    async function loadGameData() {
+      try {
+        const captures = await getCaptures();
+        // Обновляем состояние зон на основе захватов
+        captures.forEach(c => {
+          const zone = zonesData.find(z => z.id === c.zone_id);
+          if (zone) {
+            zone.owner = c.player_id === playerId ? 'me' : c.player_id;
+            zone.capturedAt = c.captured_at || Date.now();
+          }
+        });
+        console.log('✅ Данные загружены:', captures.length, 'захватов');
+      } catch (e) {
+        console.warn('⚠️ Ошибка загрузки данных:', e);
+      }
+    }
+
     // ============================================================
     // КОНСТАНТЫ
     // ============================================================
@@ -347,98 +612,6 @@
     const SPEED_MIN = 4;
     const SPEED_MAX = 25;
     const SEGMENT_SIZE = 10;
-
-    // ============================================================
-    // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-    // ============================================================
-    function calcPerimeter(coords) {
-      if (coords.length < 2) return 0;
-      let total = 0;
-      for (let i = 0; i < coords.length - 1; i++) {
-        total += map.distance(coords[i], coords[i + 1]);
-      }
-      total += map.distance(coords[coords.length - 1], coords[0]);
-      return Math.round(total);
-    }
-
-    function getDaysSince(timestamp) {
-      const now = Date.now();
-      const diff = now - timestamp;
-      return diff / (1000 * 60 * 60 * 24);
-    }
-
-    function getHoursSince(timestamp) {
-      const now = Date.now();
-      const diff = now - timestamp;
-      return diff / (1000 * 60 * 60);
-    }
-
-    function isProtected(zone) {
-      if (!zone.capturedAt) return false;
-      return getHoursSince(zone.capturedAt) < PROTECTION_HOURS;
-    }
-
-    function getPoints(zone) {
-      if (!zone.capturedAt) return 0;
-      const days = Math.floor(getDaysSince(zone.capturedAt));
-      return days * 1;
-    }
-
-    // ============================================================
-    // ПРОВЕРКА СКОРОСТИ
-    // ============================================================
-    function checkSpeed(points) {
-      if (points.length < 5) return false;
-      const speeds = [];
-      for (let i = 0; i < points.length - SEGMENT_SIZE; i += SEGMENT_SIZE) {
-        const segment = points.slice(i, i + SEGMENT_SIZE);
-        if (segment.length < 2) continue;
-        let dist = 0;
-        for (let j = 1; j < segment.length; j++) {
-          dist += map.distance(segment[j-1], segment[j]);
-        }
-        const hours = (segment.length - 1) * 2 / 3600;
-        if (hours === 0) continue;
-        const speed = dist / 1000 / hours;
-        if (speed > 2 && speed < 30) {
-          speeds.push(speed);
-        }
-      }
-      if (speeds.length === 0) return false;
-      speeds.sort((a, b) => a - b);
-      const median = speeds[Math.floor(speeds.length / 2)];
-      return median >= SPEED_MIN && median <= SPEED_MAX;
-    }
-
-    // ============================================================
-    // ПРОВЕРКА ОТБОРА
-    // ============================================================
-    function checkSteal(zone, points) {
-      if (zone.owner === 'me') return false;
-      if (!zone.capturedAt) return false;
-      if (isProtected(zone)) return false;
-      if (points.length < 5) return false;
-      if (!checkSpeed(points)) {
-        alert(t('speedError'));
-        return false;
-      }
-      const perimeter = calcPerimeter(zone.coords);
-      if (perimeter === 0) return false;
-      let covered = 0;
-      for (let i = 0; i < points.length; i++) {
-        const p = points[i];
-        let minDist = Infinity;
-        for (let j = 0; j < zone.coords.length; j++) {
-          const d = map.distance(p, zone.coords[j]);
-          if (d < minDist) minDist = d;
-        }
-        if (minDist < BUFFER) {
-          covered++;
-        }
-      }
-      const coverage = covered / points.length;
-      return coverage >= STEAL_THRESHOLD;
-    }
 
     // ============================================================
     // 22 ЗОНЫ
@@ -898,6 +1071,98 @@
     ];
 
     // ============================================================
+    // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+    // ============================================================
+    function calcPerimeter(coords) {
+      if (coords.length < 2) return 0;
+      let total = 0;
+      for (let i = 0; i < coords.length - 1; i++) {
+        total += map.distance(coords[i], coords[i + 1]);
+      }
+      total += map.distance(coords[coords.length - 1], coords[0]);
+      return Math.round(total);
+    }
+
+    function getDaysSince(timestamp) {
+      const now = Date.now();
+      const diff = now - timestamp;
+      return diff / (1000 * 60 * 60 * 24);
+    }
+
+    function getHoursSince(timestamp) {
+      const now = Date.now();
+      const diff = now - timestamp;
+      return diff / (1000 * 60 * 60);
+    }
+
+    function isProtected(zone) {
+      if (!zone.capturedAt) return false;
+      return getHoursSince(zone.capturedAt) < PROTECTION_HOURS;
+    }
+
+    function getPoints(zone) {
+      if (!zone.capturedAt) return 0;
+      const days = Math.floor(getDaysSince(zone.capturedAt));
+      return days * 1;
+    }
+
+    // ============================================================
+    // ПРОВЕРКА СКОРОСТИ
+    // ============================================================
+    function checkSpeed(points) {
+      if (points.length < 5) return false;
+      const speeds = [];
+      for (let i = 0; i < points.length - SEGMENT_SIZE; i += SEGMENT_SIZE) {
+        const segment = points.slice(i, i + SEGMENT_SIZE);
+        if (segment.length < 2) continue;
+        let dist = 0;
+        for (let j = 1; j < segment.length; j++) {
+          dist += map.distance(segment[j-1], segment[j]);
+        }
+        const hours = (segment.length - 1) * 2 / 3600;
+        if (hours === 0) continue;
+        const speed = dist / 1000 / hours;
+        if (speed > 2 && speed < 30) {
+          speeds.push(speed);
+        }
+      }
+      if (speeds.length === 0) return false;
+      speeds.sort((a, b) => a - b);
+      const median = speeds[Math.floor(speeds.length / 2)];
+      return median >= SPEED_MIN && median <= SPEED_MAX;
+    }
+
+    // ============================================================
+    // ПРОВЕРКА ОТБОРА
+    // ============================================================
+    function checkSteal(zone, points) {
+      if (zone.owner === 'me') return false;
+      if (!zone.capturedAt) return false;
+      if (isProtected(zone)) return false;
+      if (points.length < 5) return false;
+      if (!checkSpeed(points)) {
+        alert(t('speedError'));
+        return false;
+      }
+      const perimeter = calcPerimeter(zone.coords);
+      if (perimeter === 0) return false;
+      let covered = 0;
+      for (let i = 0; i < points.length; i++) {
+        const p = points[i];
+        let minDist = Infinity;
+        for (let j = 0; j < zone.coords.length; j++) {
+          const d = map.distance(p, zone.coords[j]);
+          if (d < minDist) minDist = d;
+        }
+        if (minDist < BUFFER) {
+          covered++;
+        }
+      }
+      const coverage = covered / points.length;
+      return coverage >= STEAL_THRESHOLD;
+    }
+
+    // ============================================================
     // КАРТА
     // ============================================================
     const map = L.map('map', {
@@ -934,83 +1199,61 @@
     const leaderboardEl = document.getElementById('leaderboard');
 
     // ============================================================
-    // ЗАГРУЗКА/СОХРАНЕНИЕ
-    // ============================================================
-    function loadState() {
-      try {
-        const saved = localStorage.getItem('runningGameState');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          zonesData.forEach(z => {
-            const found = parsed.find(p => p.id === z.id);
-            if (found) {
-              z.capturedAt = found.capturedAt;
-              z.owner = found.owner || 'me';
-            }
-          });
-        }
-      } catch (e) {}
-    }
-
-    function saveState() {
-      try {
-        const state = zonesData.map(z => ({
-          id: z.id,
-          capturedAt: z.capturedAt || null,
-          owner: z.owner || null
-        }));
-        localStorage.setItem('runningGameState', JSON.stringify(state));
-      } catch (e) {}
-    }
-
-    // ============================================================
     // ТУРНИРНАЯ ТАБЛИЦА
     // ============================================================
-    function updateLeaderboard() {
-      const players = {};
-      zonesData.forEach(z => {
-        if (z.owner && z.capturedAt) {
-          const owner = z.owner;
-          if (!players[owner]) {
-            players[owner] = { name: owner, zones: 0, points: 0 };
+    async function updateLeaderboard() {
+      try {
+        const players = await getPlayers();
+        const captures = await getCaptures();
+        
+        const scoreMap = {};
+        captures.forEach(c => {
+          if (!scoreMap[c.player_id]) {
+            scoreMap[c.player_id] = { points: 0, zones: 0 };
           }
-          players[owner].zones += 1;
-          players[owner].points += getPoints(z);
+          scoreMap[c.player_id].points += c.points || 1;
+          scoreMap[c.player_id].zones += 1;
+        });
+
+        const playerMap = {};
+        players.forEach(p => {
+          playerMap[p.id] = p.username;
+        });
+
+        const sorted = Object.keys(scoreMap)
+          .map(id => ({
+            id,
+            name: playerMap[id] || 'Неизвестный',
+            points: scoreMap[id].points,
+            zones: scoreMap[id].zones
+          }))
+          .sort((a, b) => b.points - a.points || b.zones - a.zones);
+
+        if (sorted.length === 0) {
+          lbContent.innerHTML = `<div class="empty">${t('noPlayers')}</div>`;
+          return;
         }
-      });
-      const me = 'me';
-      const myZones = zonesData.filter(z => z.owner === 'me' && z.capturedAt);
-      if (!players[me] && myZones.length > 0) {
-        players[me] = { name: t('yourZone'), zones: 0, points: 0 };
+
+        let html = '';
+        sorted.forEach((p, i) => {
+          const pos = i + 1;
+          let posClass = 'lb-pos';
+          if (pos === 1) posClass += ' top1';
+          else if (pos === 2) posClass += ' top2';
+          else if (pos === 3) posClass += ' top3';
+          const isMe = p.id === playerId;
+          html += `
+            <div class="lb-item ${isMe ? 'me' : ''}">
+              <span><span class="${posClass}">#${pos}</span><span class="name">${p.name}</span></span>
+              <span class="score">${p.points}⭐ (${p.zones}з)</span>
+            </div>
+          `;
+        });
+        lbContent.innerHTML = html;
+      } catch (e) {
+        console.warn('Ошибка обновления таблицы:', e);
+        lbContent.innerHTML = `<div class="empty">⚠️ Ошибка загрузки</div>`;
       }
-      if (players[me]) {
-        players[me].zones = myZones.length;
-        players[me].points = myZones.reduce((sum, z) => sum + getPoints(z), 0);
-        players[me].name = t('yourZone');
-      }
-      const sorted = Object.values(players)
-        .filter(p => p.zones > 0 || p.points > 0)
-        .sort((a, b) => b.points - a.points || b.zones - a.zones);
-      if (sorted.length === 0) {
-        lbContent.innerHTML = `<div class="empty">${t('noPlayers')}</div>`;
-        return;
-      }
-      let html = '';
-      sorted.forEach((p, i) => {
-        const pos = i + 1;
-        let posClass = 'lb-pos';
-        if (pos === 1) posClass += ' top1';
-        else if (pos === 2) posClass += ' top2';
-        else if (pos === 3) posClass += ' top3';
-        const isMe = p.name === t('yourZone');
-        html += `
-          <div class="lb-item ${isMe ? 'me' : ''}">
-            <span><span class="${posClass}">#${pos}</span><span class="name">${p.name}</span></span>
-            <span class="score">${p.points}⭐ (${p.zones}з)</span>
-          </div>
-        `;
-      });
-      lbContent.innerHTML = html;
     }
 
     // ============================================================
@@ -1176,7 +1419,7 @@
     // ============================================================
     // ЗАХВАТ ЗОНЫ
     // ============================================================
-    function captureZone(zoneId) {
+    async function captureZone(zoneId) {
       const zone = zonesData.find(z => z.id === zoneId);
       if (!zone) return;
 
@@ -1205,10 +1448,47 @@
       zone.capturedAt = Date.now();
       zone.owner = 'me';
       capturedZones.add(zone.id);
+
+      // Сохраняем в базу данных
+      if (playerId) {
+        await saveCapture(playerId, zoneId);
+        await updateLeaderboard();
+      }
+
       saveState();
       highlightedZone = zone.id;
       drawZones();
       updateUI();
+    }
+
+    // ============================================================
+    // СОХРАНЕНИЕ В LOCALSTORAGE
+    // ============================================================
+    function saveState() {
+      try {
+        const state = zonesData.map(z => ({
+          id: z.id,
+          capturedAt: z.capturedAt || null,
+          owner: z.owner || null
+        }));
+        localStorage.setItem('runningGameState', JSON.stringify(state));
+      } catch (e) {}
+    }
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem('runningGameState');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          zonesData.forEach(z => {
+            const found = parsed.find(p => p.id === z.id);
+            if (found) {
+              z.capturedAt = found.capturedAt;
+              z.owner = found.owner || null;
+            }
+          });
+        }
+      } catch (e) {}
     }
 
     // ============================================================
@@ -1325,13 +1605,6 @@
     });
 
     // ============================================================
-    // ЯЗЫКОВЫЕ КНОПКИ
-    // ============================================================
-    document.getElementById('langRu').addEventListener('click', () => setLanguage('ru'));
-    document.getElementById('langEn').addEventListener('click', () => setLanguage('en'));
-    document.getElementById('langVi').addEventListener('click', () => setLanguage('vi'));
-
-    // ============================================================
     // ГЕОЛОКАЦИЯ
     // ============================================================
     if (navigator.geolocation) {
@@ -1359,7 +1632,27 @@
     loadState();
     drawZones();
     updateAllTexts();
-    console.log('🏃 22 зоны — с поддержкой языков');
+
+    // Проверяем, есть ли сохранённый игрок
+    const savedPlayer = localStorage.getItem('playerName');
+    if (savedPlayer) {
+      currentPlayer = savedPlayer;
+      document.getElementById('playerDisplay').textContent = `👤 ${savedPlayer}`;
+      // Загружаем данные игрока
+      getPlayerId(savedPlayer).then(id => {
+        if (id) {
+          playerId = id;
+          loadGameData().then(() => {
+            drawZones();
+            updateLeaderboard();
+          });
+        }
+      });
+    } else {
+      showModal();
+    }
+
+    console.log('🏃 Игра с подключением к Supabase запущена!');
   </script>
 </body>
 </html>
