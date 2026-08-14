@@ -1,26 +1,26 @@
-<!-- Блок регистрации (ВСТАВИТЬ В INDEX.HTML ПЕРЕД ЗАКРЫВАЮЩИМ ТЕГОМ </body>) -->
-
+<!-- НАЧАЛО ВСТАВКИ: ОКНО РЕГИСТРАЦИИ -->
 <style>
   #regModal {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.7); backdrop-filter: blur(5px);
-    display: flex; justify-content: center; align-items: center; z-index: 9999;
+    background: #0b1221; /* Цвет фона как у игры */
+    display: flex; justify-content: center; align-items: center; z-index: 999999;
   }
   .reg-box {
-    background: #1e1e1e; padding: 25px; border-radius: 20px; width: 85%; max-width: 320px;
-    text-align: center; border: 1px solid #333;
+    background: #1a2332; padding: 30px; border-radius: 24px; width: 85%; max-width: 320px;
+    text-align: center; border: 1px solid #2a3a52;
   }
-  .reg-box h2 { color: white; margin-bottom: 15px; font-size: 20px; }
+  .reg-box h2 { color: white; font-size: 20px; margin-bottom: 20px; }
   .reg-input {
-    width: 100%; padding: 12px; border-radius: 10px; border: none;
-    background: #2d2d2d; color: white; font-size: 16px; margin-bottom: 15px; outline: none;
+    width: 100%; padding: 12px; border-radius: 12px; border: none;
+    background: #0b1221; color: white; font-size: 16px; margin-bottom: 15px; outline: none;
+    text-align: center;
   }
-  .reg-palette { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+  .reg-palette { display: flex; justify-content: center; gap: 12px; margin-bottom: 20px; }
   .reg-color {
-    width: 35px; height: 35px; border-radius: 50%; cursor: pointer;
-    border: 2px solid transparent; transition: 0.2s;
+    width: 36px; height: 36px; border-radius: 50%; cursor: pointer;
+    border: 3px solid transparent; transition: 0.2s;
   }
-  .reg-color.selected { border: 2px solid white; transform: scale(1.1); }
+  .reg-color.selected { border-color: #fff; transform: scale(1.1); }
   .reg-btn {
     width: 100%; padding: 12px; border-radius: 30px; border: none;
     background: #22c55e; color: white; font-size: 16px; font-weight: bold; cursor: pointer;
@@ -29,41 +29,38 @@
 
 <div id="regModal">
   <div class="reg-box">
-    <h2>Вход</h2>
+    <h2>Вход в игру</h2>
     <input type="text" id="regName" class="reg-input" placeholder="Ваш ник" maxlength="12">
     <div class="reg-palette">
-      <div class="reg-color" style="background:#ef4444;" onclick="selectRegColor(this)"></div>
-      <div class="reg-color" style="background:#3b82f6;" onclick="selectRegColor(this)"></div>
-      <div class="reg-color" style="background:#22c55e;" onclick="selectRegColor(this)"></div>
-      <div class="reg-color" style="background:#eab308;" onclick="selectRegColor(this)"></div>
-      <div class="reg-color" style="background:#a855f7;" onclick="selectRegColor(this)"></div>
+      <div class="reg-color" style="background:#ef4444;" onclick="selectColor(this)"></div>
+      <div class="reg-color" style="background:#3b82f6;" onclick="selectColor(this)"></div>
+      <div class="reg-color" style="background:#22c55e;" onclick="selectColor(this)"></div>
+      <div class="reg-color" style="background:#eab308;" onclick="selectColor(this)"></div>
+      <div class="reg-color" style="background:#a855f7;" onclick="selectColor(this)"></div>
     </div>
-    <button class="reg-btn" onclick="finishReg()">Начать игру</button>
+    <button class="reg-btn" onclick="startGame()">Войти</button>
   </div>
 </div>
 
 <script>
-  let regColor = '#ef4444';
-  
-  function selectRegColor(el) {
+  let chosenColor = '#ef4444';
+
+  function selectColor(el) {
     document.querySelectorAll('.reg-color').forEach(c => c.classList.remove('selected'));
     el.classList.add('selected');
-    regColor = el.style.backgroundColor;
+    chosenColor = el.style.backgroundColor;
   }
 
-  function finishReg() {
+  function startGame() {
     const name = document.getElementById('regName').value.trim();
-    if(!name) { alert('Введите имя!'); return; }
+    if (!name) { alert('Введите имя'); return; }
     
-    // Сохраняем данные в глобальные переменные для вашей карты
-    window.myPlayer = { name: name, color: regColor };
-    
-    // Закрываем окно
+    // Скрываем окно
     document.getElementById('regModal').style.display = 'none';
-    
-    // ЗАПУСК ВАШЕЙ КАРТЫ (тут разработчик впишет вашу функцию старта)
-    if(typeof window.startGame === 'function') {
-       window.startGame(name, regColor); 
-    }
+
+    // ЗАПУСК ВАШЕЙ КАРТЫ (ВСТАВИТЬ ВАШУ ФУНКЦИЮ ИНИЦИАЛИЗАЦИИ)
+    // window.gamePlayer = { name: name, color: chosenColor };
+    // ВАША_ФУНКЦИЯ_ЗАПУСКА_КАРТЫ();
   }
 </script>
+<!-- КОНЕЦ ВСТАВКИ -->
