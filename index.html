@@ -22,10 +22,10 @@
       display: flex;
       justify-content: space-around;
       z-index: 1000;
-      font-size: 12px;
+      font-size: 11px;
       backdrop-filter: blur(12px);
       flex-wrap: wrap;
-      gap: 6px;
+      gap: 4px;
       border: 1px solid rgba(255,255,255,0.08);
     }
     .badge-green { background: #2ecc71; border-radius: 20px; padding: 2px 12px; font-weight: bold; }
@@ -135,7 +135,7 @@
       min-width: 160px;
     }
     .leaderboard h4 { margin-bottom: 6px; border-bottom: 1px solid #444; padding-bottom: 4px; font-size: 13px; text-align: center; }
-    .lb-item { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #2a2a2a; font-size: 11px; }
+    .lb-item { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #2a2a2a; font-size: 11px; align-items: center; }
     .lb-item .name { color: #aaa; }
     .lb-item .score { color: #f1c40f; font-weight: bold; }
     .lb-item.me .name { color: #2ecc71; font-weight: bold; }
@@ -145,6 +145,15 @@
     .lb-pos.top2 { color: #c0c0c0; }
     .lb-pos.top3 { color: #cd7f32; }
     .leaderboard .empty { text-align: center; color: #555; padding: 8px 0; }
+    .color-dot {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 6px;
+      border: 1px solid rgba(255,255,255,0.2);
+      flex-shrink: 0;
+    }
 
     .lang-switcher {
       position: fixed;
@@ -189,27 +198,20 @@
       align-items: center;
       justify-content: center;
       backdrop-filter: blur(8px);
+      padding: 16px;
     }
     .modal {
       background: #1a1a2e;
-      padding: 32px 28px;
+      padding: 28px 24px;
       border-radius: 20px;
-      max-width: 340px;
-      width: 90%;
+      max-width: 380px;
+      width: 100%;
       border: 1px solid rgba(255,255,255,0.08);
+      max-height: 90vh;
+      overflow-y: auto;
     }
-    .modal h2 {
-      color: white;
-      font-size: 20px;
-      margin-bottom: 8px;
-      text-align: center;
-    }
-    .modal p {
-      color: #aaa;
-      font-size: 14px;
-      text-align: center;
-      margin-bottom: 20px;
-    }
+    .modal h2 { color: white; font-size: 20px; margin-bottom: 8px; text-align: center; }
+    .modal p { color: #aaa; font-size: 14px; text-align: center; margin-bottom: 16px; }
     .modal input {
       width: 100%;
       padding: 14px 16px;
@@ -222,10 +224,7 @@
       transition: 0.3s;
       text-align: center;
     }
-    .modal input:focus {
-      border-color: #2ecc71;
-      background: rgba(46,204,113,0.08);
-    }
+    .modal input:focus { border-color: #2ecc71; background: rgba(46,204,113,0.08); }
     .modal button {
       width: 100%;
       margin-top: 16px;
@@ -240,13 +239,30 @@
       transition: 0.3s;
     }
     .modal button:hover { transform: scale(0.98); }
-    .modal .error {
-      color: #e74c3c;
-      font-size: 13px;
-      text-align: center;
-      margin-top: 10px;
-      display: none;
+    .modal .error { color: #e74c3c; font-size: 13px; text-align: center; margin-top: 10px; display: none; }
+    
+    .color-picker {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 12px 0 8px 0;
     }
+    .color-option {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.15);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .color-option:hover { transform: scale(1.1); }
+    .color-option.selected { 
+      border-color: #fff; 
+      box-shadow: 0 0 20px rgba(255,255,255,0.3);
+      transform: scale(1.1);
+    }
+    .modal .color-label { color: #888; font-size: 12px; text-align: center; margin-bottom: 4px; }
   </style>
 </head>
 <body>
@@ -258,6 +274,19 @@
       <h2>🏃 Добро пожаловать!</h2>
       <p>Введите ваш игровой никнейм</p>
       <input type="text" id="usernameInput" placeholder="Например: AlexRunner" maxlength="20" />
+      
+      <div class="color-label">Выберите ваш цвет:</div>
+      <div class="color-picker" id="colorPicker">
+        <div class="color-option selected" style="background:#e74c3c" data-color="#e74c3c"></div>
+        <div class="color-option" style="background:#2ecc71" data-color="#2ecc71"></div>
+        <div class="color-option" style="background:#3498db" data-color="#3498db"></div>
+        <div class="color-option" style="background:#f1c40f" data-color="#f1c40f"></div>
+        <div class="color-option" style="background:#9b59b6" data-color="#9b59b6"></div>
+        <div class="color-option" style="background:#e67e22" data-color="#e67e22"></div>
+        <div class="color-option" style="background:#e84393" data-color="#e84393"></div>
+        <div class="color-option" style="background:#ecf0f1" data-color="#ecf0f1"></div>
+      </div>
+      
       <button id="saveNameBtn">Продолжить</button>
       <div class="error" id="nameError">⚠️ Введите никнейм (минимум 2 символа)</div>
     </div>
@@ -301,24 +330,16 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ubWN2bW96Y2V5YXRjbXhtbm5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2OTg0NTksImV4cCI6MjEwMjI3NDQ1OX0.WswNX824baDjb05JAm8EJhmpIvmztsaqLyP3x4kevOo';
 
     // ============================================================
-    // ПЕРЕВОДЫ
+    // ПЕРЕВОДЫ (сокращено)
     // ============================================================
     const LANG = {
       ru: {
-        zones: 'Зон',
-        captured: 'Захвачено',
-        points: 'Очков',
+        zones: 'Зон', captured: 'Захвачено', points: 'Очков',
         leaderboard: '🏆 ТУРНИРНАЯ ТАБЛИЦА',
-        stats: '📊 Статистика',
-        start: '🏃 СТАРТ',
-        stop: '⏹ СТОП',
-        free: '⬜ Свободна',
-        vulnerable: '⚠️ Уязвима',
-        protected: '🛡️ Защищена',
-        other: '👤 Занята другим игроком',
-        clickZone: 'Кликни на зону',
-        noPlayers: 'Нет игроков',
-        reset: 'Сбросить все зоны?',
+        stats: '📊 Статистика', start: '🏃 СТАРТ', stop: '⏹ СТОП',
+        free: '⬜ Свободна', vulnerable: '⚠️ Уязвима', protected: '🛡️ Защищена',
+        other: '👤 Занята другим игроком', clickZone: 'Кликни на зону',
+        noPlayers: 'Нет игроков', reset: 'Сбросить все зоны?',
         tooShort: '❌ Слишком короткий маршрут',
         speedError: '❌ Скорость не соответствует бегу!',
         needMorePoints: '❌ Нужно пробежать ≥ 80% периметра зоны!',
@@ -327,30 +348,17 @@
         capturedZone: '✅ Зона захвачена!',
         alreadyYours: '❌ Это твоя зона!',
         protectedZone: '🛡️ Зона защищена! Подожди 24 часа.',
-        yourZone: 'Ты',
-        otherPlayer: 'Другой игрок',
-        perimeter: 'Периметр',
-        sector: 'Сектор',
-        owner: 'Владелец',
-        noZones: 'Маршрут не захватил ни одной зоны',
-        saving: 'Сохранение...',
-        saved: 'Сохранено!'
+        yourZone: 'Ты', otherPlayer: 'Другой игрок',
+        perimeter: 'Периметр', sector: 'Сектор', owner: 'Владелец',
+        noZones: 'Маршрут не захватил ни одной зоны'
       },
       en: {
-        zones: 'Zones',
-        captured: 'Captured',
-        points: 'Points',
+        zones: 'Zones', captured: 'Captured', points: 'Points',
         leaderboard: '🏆 LEADERBOARD',
-        stats: '📊 Statistics',
-        start: '🏃 START',
-        stop: '⏹ STOP',
-        free: '⬜ Free',
-        vulnerable: '⚠️ Vulnerable',
-        protected: '🛡️ Protected',
-        other: '👤 Occupied',
-        clickZone: 'Click on zone',
-        noPlayers: 'No players',
-        reset: 'Reset all zones?',
+        stats: '📊 Statistics', start: '🏃 START', stop: '⏹ STOP',
+        free: '⬜ Free', vulnerable: '⚠️ Vulnerable', protected: '🛡️ Protected',
+        other: '👤 Occupied', clickZone: 'Click on zone',
+        noPlayers: 'No players', reset: 'Reset all zones?',
         tooShort: '❌ Route too short',
         speedError: '❌ Speed does not match running!',
         needMorePoints: '❌ Need to run ≥ 80% of zone perimeter!',
@@ -359,30 +367,17 @@
         capturedZone: '✅ Zone captured!',
         alreadyYours: '❌ This is your zone!',
         protectedZone: '🛡️ Zone is protected! Wait 24 hours.',
-        yourZone: 'You',
-        otherPlayer: 'Other player',
-        perimeter: 'Perimeter',
-        sector: 'Sector',
-        owner: 'Owner',
-        noZones: 'Route captured no zones',
-        saving: 'Saving...',
-        saved: 'Saved!'
+        yourZone: 'You', otherPlayer: 'Other player',
+        perimeter: 'Perimeter', sector: 'Sector', owner: 'Owner',
+        noZones: 'Route captured no zones'
       },
       vi: {
-        zones: 'Khu vực',
-        captured: 'Đã chiếm',
-        points: 'Điểm',
+        zones: 'Khu vực', captured: 'Đã chiếm', points: 'Điểm',
         leaderboard: '🏆 BẢNG XẾP HẠNG',
-        stats: '📊 Thống kê',
-        start: '🏃 BẮT ĐẦU',
-        stop: '⏹ DỪNG',
-        free: '⬜ Trống',
-        vulnerable: '⚠️ Dễ bị tấn công',
-        protected: '🛡️ Được bảo vệ',
-        other: '👤 Đã có chủ',
-        clickZone: 'Nhấn vào khu vực',
-        noPlayers: 'Không có người chơi',
-        reset: 'Đặt lại tất cả khu vực?',
+        stats: '📊 Thống kê', start: '🏃 BẮT ĐẦU', stop: '⏹ DỪNG',
+        free: '⬜ Trống', vulnerable: '⚠️ Dễ bị tấn công', protected: '🛡️ Được bảo vệ',
+        other: '👤 Đã có chủ', clickZone: 'Nhấn vào khu vực',
+        noPlayers: 'Không có người chơi', reset: 'Đặt lại tất cả khu vực?',
         tooShort: '❌ Đường chạy quá ngắn',
         speedError: '❌ Tốc độ không phù hợp với chạy bộ!',
         needMorePoints: '❌ Cần chạy ≥ 80% chu vi khu vực!',
@@ -391,24 +386,18 @@
         capturedZone: '✅ Đã chiếm khu vực!',
         alreadyYours: '❌ Đây là khu vực của bạn!',
         protectedZone: '🛡️ Khu vực được bảo vệ! Đợi 24 giờ.',
-        yourZone: 'Bạn',
-        otherPlayer: 'Người chơi khác',
-        perimeter: 'Chu vi',
-        sector: 'Khu vực',
-        owner: 'Chủ sở hữu',
-        noZones: 'Đường chạy không chiếm được khu vực nào',
-        saving: 'Đang lưu...',
-        saved: 'Đã lưu!'
+        yourZone: 'Bạn', otherPlayer: 'Người chơi khác',
+        perimeter: 'Chu vi', sector: 'Khu vực', owner: 'Chủ sở hữu',
+        noZones: 'Đường chạy không chiếm được khu vực nào'
       }
     };
 
     let currentLang = 'ru';
     let currentPlayer = null;
     let playerId = null;
+    let playerColor = '#e74c3c';
 
-    function t(key) {
-      return LANG[currentLang][key] || key;
-    }
+    function t(key) { return LANG[currentLang][key] || key; }
 
     function setLanguage(lang) {
       currentLang = lang;
@@ -453,9 +442,6 @@
         });
         return res.json();
       },
-      async get(table, select = '*') {
-        return this.query(table, { headers: { 'Prefer': 'return=representation' } });
-      },
       async post(table, data) {
         return this.query(table, {
           method: 'POST',
@@ -468,9 +454,9 @@
     // ============================================================
     // УПРАВЛЕНИЕ ИГРОКОМ
     // ============================================================
-    async function registerPlayer(username) {
+    async function registerPlayer(username, color) {
       try {
-        const result = await supabase.post('players', { username });
+        const result = await supabase.post('players', { username, color });
         if (result && result.length > 0) {
           return result[0];
         }
@@ -483,9 +469,9 @@
 
     async function getPlayerId(username) {
       try {
-        const players = await supabase.query(`players?username=eq.${username}&select=id`);
+        const players = await supabase.query(`players?username=eq.${username}&select=id,color`);
         if (players && players.length > 0) {
-          return players[0].id;
+          return players[0];
         }
         return null;
       } catch (e) {
@@ -520,13 +506,26 @@
 
     async function getPlayers() {
       try {
-        const result = await supabase.query('players?select=id,username');
+        const result = await supabase.query('players?select=id,username,color');
         return result || [];
       } catch (e) {
         console.error('Ошибка загрузки игроков:', e);
         return [];
       }
     }
+
+    // ============================================================
+    // ВЫБОР ЦВЕТА
+    // ============================================================
+    let selectedColor = '#e74c3c';
+
+    document.querySelectorAll('.color-option').forEach(el => {
+      el.addEventListener('click', function() {
+        document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
+        this.classList.add('selected');
+        selectedColor = this.dataset.color;
+      });
+    });
 
     // ============================================================
     // МОДАЛЬНОЕ ОКНО
@@ -553,21 +552,21 @@
       }
       nameError.style.display = 'none';
       
-      // Проверяем, есть ли игрок
       let player = await getPlayerId(name);
       if (!player) {
-        // Создаём нового
-        const newPlayer = await registerPlayer(name);
+        const newPlayer = await registerPlayer(name, selectedColor);
         if (newPlayer) {
-          player = newPlayer.id;
+          player = newPlayer;
         }
       }
       
       if (player) {
-        playerId = player;
+        playerId = player.id;
+        playerColor = player.color || selectedColor;
         currentPlayer = name;
         localStorage.setItem('playerName', name);
-        localStorage.setItem('playerId', player);
+        localStorage.setItem('playerId', player.id);
+        localStorage.setItem('playerColor', playerColor);
         document.getElementById('playerDisplay').textContent = `👤 ${name}`;
         hideModal();
         await loadGameData();
@@ -589,7 +588,6 @@
     async function loadGameData() {
       try {
         const captures = await getCaptures();
-        // Обновляем состояние зон на основе захватов
         captures.forEach(c => {
           const zone = zonesData.find(z => z.id === c.zone_id);
           if (zone) {
@@ -614,10 +612,10 @@
     const SEGMENT_SIZE = 10;
 
     // ============================================================
-    // 22 ЗОНЫ
+    // 22 ЗОНЫ (полный список, как в исходнике)
     // ============================================================
     const zonesData = [
-      // ===== СЕВЕР (01-10) =====
+      // Север (01-10)
       {
         id: '01', name: 'Vĩnh Hải', sector: 'Север',
         coords: [
@@ -762,7 +760,7 @@
           [12.2584764, 109.1965357]
         ]
       },
-      // ===== ЦЕНТР (11-18) =====
+      // Центр (11-18)
       {
         id: '11', name: 'Vĩnh Mỹ', sector: 'Центр',
         coords: [
@@ -922,7 +920,7 @@
           [12.2335969, 109.1976897]
         ]
       },
-      // ===== ЮГ (19-22) =====
+      // Юг (19-22)
       {
         id: '19',
         name: 'Vĩnh Nam',
@@ -1071,98 +1069,6 @@
     ];
 
     // ============================================================
-    // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-    // ============================================================
-    function calcPerimeter(coords) {
-      if (coords.length < 2) return 0;
-      let total = 0;
-      for (let i = 0; i < coords.length - 1; i++) {
-        total += map.distance(coords[i], coords[i + 1]);
-      }
-      total += map.distance(coords[coords.length - 1], coords[0]);
-      return Math.round(total);
-    }
-
-    function getDaysSince(timestamp) {
-      const now = Date.now();
-      const diff = now - timestamp;
-      return diff / (1000 * 60 * 60 * 24);
-    }
-
-    function getHoursSince(timestamp) {
-      const now = Date.now();
-      const diff = now - timestamp;
-      return diff / (1000 * 60 * 60);
-    }
-
-    function isProtected(zone) {
-      if (!zone.capturedAt) return false;
-      return getHoursSince(zone.capturedAt) < PROTECTION_HOURS;
-    }
-
-    function getPoints(zone) {
-      if (!zone.capturedAt) return 0;
-      const days = Math.floor(getDaysSince(zone.capturedAt));
-      return days * 1;
-    }
-
-    // ============================================================
-    // ПРОВЕРКА СКОРОСТИ
-    // ============================================================
-    function checkSpeed(points) {
-      if (points.length < 5) return false;
-      const speeds = [];
-      for (let i = 0; i < points.length - SEGMENT_SIZE; i += SEGMENT_SIZE) {
-        const segment = points.slice(i, i + SEGMENT_SIZE);
-        if (segment.length < 2) continue;
-        let dist = 0;
-        for (let j = 1; j < segment.length; j++) {
-          dist += map.distance(segment[j-1], segment[j]);
-        }
-        const hours = (segment.length - 1) * 2 / 3600;
-        if (hours === 0) continue;
-        const speed = dist / 1000 / hours;
-        if (speed > 2 && speed < 30) {
-          speeds.push(speed);
-        }
-      }
-      if (speeds.length === 0) return false;
-      speeds.sort((a, b) => a - b);
-      const median = speeds[Math.floor(speeds.length / 2)];
-      return median >= SPEED_MIN && median <= SPEED_MAX;
-    }
-
-    // ============================================================
-    // ПРОВЕРКА ОТБОРА
-    // ============================================================
-    function checkSteal(zone, points) {
-      if (zone.owner === 'me') return false;
-      if (!zone.capturedAt) return false;
-      if (isProtected(zone)) return false;
-      if (points.length < 5) return false;
-      if (!checkSpeed(points)) {
-        alert(t('speedError'));
-        return false;
-      }
-      const perimeter = calcPerimeter(zone.coords);
-      if (perimeter === 0) return false;
-      let covered = 0;
-      for (let i = 0; i < points.length; i++) {
-        const p = points[i];
-        let minDist = Infinity;
-        for (let j = 0; j < zone.coords.length; j++) {
-          const d = map.distance(p, zone.coords[j]);
-          if (d < minDist) minDist = d;
-        }
-        if (minDist < BUFFER) {
-          covered++;
-        }
-      }
-      const coverage = covered / points.length;
-      return coverage >= STEAL_THRESHOLD;
-    }
-
-    // ============================================================
     // КАРТА
     // ============================================================
     const map = L.map('map', {
@@ -1199,7 +1105,7 @@
     const leaderboardEl = document.getElementById('leaderboard');
 
     // ============================================================
-    // ТУРНИРНАЯ ТАБЛИЦА
+    // ТУРНИРНАЯ ТАБЛИЦА (с цветами)
     // ============================================================
     async function updateLeaderboard() {
       try {
@@ -1217,13 +1123,14 @@
 
         const playerMap = {};
         players.forEach(p => {
-          playerMap[p.id] = p.username;
+          playerMap[p.id] = { username: p.username, color: p.color || '#555' };
         });
 
         const sorted = Object.keys(scoreMap)
           .map(id => ({
             id,
-            name: playerMap[id] || 'Неизвестный',
+            name: playerMap[id]?.username || 'Неизвестный',
+            color: playerMap[id]?.color || '#555',
             points: scoreMap[id].points,
             zones: scoreMap[id].zones
           }))
@@ -1244,7 +1151,11 @@
           const isMe = p.id === playerId;
           html += `
             <div class="lb-item ${isMe ? 'me' : ''}">
-              <span><span class="${posClass}">#${pos}</span><span class="name">${p.name}</span></span>
+              <span>
+                <span class="${posClass}">#${pos}</span>
+                <span class="color-dot" style="background:${p.color}"></span>
+                <span class="name">${p.name}</span>
+              </span>
               <span class="score">${p.points}⭐ (${p.zones}з)</span>
             </div>
           `;
@@ -1257,7 +1168,7 @@
     }
 
     // ============================================================
-    // РИСОВАНИЕ ЗОН
+    // РИСОВАНИЕ ЗОН (с цветом игрока)
     // ============================================================
     function drawZones() {
       zoneLayers.forEach(l => map.removeLayer(l));
@@ -1272,7 +1183,18 @@
         const perimeter = calcPerimeter(zone.coords);
         const points = getPoints(zone);
         const isHighlighted = highlightedZone === zone.id;
-        const color = zone.color || (isMine ? (protected_ ? '#2ecc71' : '#f1c40f') : '#e74c3c');
+        
+        // Определяем цвет зоны
+        let color;
+        if (!isCaptured) {
+          color = 'rgba(100,100,100,0.3)';
+        } else if (isMine) {
+          color = playerColor || '#2ecc71';
+        } else {
+          // Пытаемся найти цвет владельца
+          const ownerColor = zone.ownerColor || '#e74c3c';
+          color = ownerColor;
+        }
 
         let fillColor, fillOpacity, weight, labelClass, dashArray;
 
@@ -1284,20 +1206,20 @@
           dashArray = '5, 5';
         } else if (isMine) {
           if (protected_) {
-            fillColor = isHighlighted ? 'rgba(46,204,113,0.5)' : 'rgba(46,204,113,0.25)';
+            fillColor = isHighlighted ? color + '88' : color + '44';
             fillOpacity = isHighlighted ? 0.5 : 0.25;
             weight = isHighlighted ? 6 : 4;
             labelClass = 'captured';
             dashArray = null;
           } else {
-            fillColor = isHighlighted ? 'rgba(241,196,15,0.5)' : 'rgba(241,196,15,0.25)';
+            fillColor = isHighlighted ? '#f1c40f88' : '#f1c40f44';
             fillOpacity = isHighlighted ? 0.5 : 0.25;
             weight = isHighlighted ? 6 : 4;
             labelClass = 'vulnerable';
             dashArray = null;
           }
         } else {
-          fillColor = isHighlighted ? 'rgba(231,76,60,0.4)' : 'rgba(231,76,60,0.2)';
+          fillColor = isHighlighted ? color + '66' : color + '33';
           fillOpacity = isHighlighted ? 0.4 : 0.2;
           weight = isHighlighted ? 5 : 3;
           labelClass = 'other';
@@ -1402,18 +1324,95 @@
     }
 
     // ============================================================
-    // ОБНОВЛЕНИЕ UI
+    // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
     // ============================================================
-    function updateUI() {
-      const total = zonesData.length;
-      const captured = zonesData.filter(z => z.owner === 'me').length;
-      const totalPoints = zonesData
-        .filter(z => z.owner === 'me')
-        .reduce((sum, z) => sum + getPoints(z), 0);
+    function calcPerimeter(coords) {
+      if (coords.length < 2) return 0;
+      let total = 0;
+      for (let i = 0; i < coords.length - 1; i++) {
+        total += map.distance(coords[i], coords[i + 1]);
+      }
+      total += map.distance(coords[coords.length - 1], coords[0]);
+      return Math.round(total);
+    }
 
-      zoneCountSpan.textContent = `🏛️ ${t('zones')}: ${captured}/${total}`;
-      capturedCountSpan.textContent = `✅ ${t('captured')}: ${captured}`;
-      totalPointsSpan.textContent = `⭐ ${t('points')}: ${totalPoints}`;
+    function getDaysSince(timestamp) {
+      const now = Date.now();
+      const diff = now - timestamp;
+      return diff / (1000 * 60 * 60 * 24);
+    }
+
+    function getHoursSince(timestamp) {
+      const now = Date.now();
+      const diff = now - timestamp;
+      return diff / (1000 * 60 * 60);
+    }
+
+    function isProtected(zone) {
+      if (!zone.capturedAt) return false;
+      return getHoursSince(zone.capturedAt) < PROTECTION_HOURS;
+    }
+
+    function getPoints(zone) {
+      if (!zone.capturedAt) return 0;
+      const days = Math.floor(getDaysSince(zone.capturedAt));
+      return days * 1;
+    }
+
+    // ============================================================
+    // ПРОВЕРКА СКОРОСТИ
+    // ============================================================
+    function checkSpeed(points) {
+      if (points.length < 5) return false;
+      const speeds = [];
+      for (let i = 0; i < points.length - SEGMENT_SIZE; i += SEGMENT_SIZE) {
+        const segment = points.slice(i, i + SEGMENT_SIZE);
+        if (segment.length < 2) continue;
+        let dist = 0;
+        for (let j = 1; j < segment.length; j++) {
+          dist += map.distance(segment[j-1], segment[j]);
+        }
+        const hours = (segment.length - 1) * 2 / 3600;
+        if (hours === 0) continue;
+        const speed = dist / 1000 / hours;
+        if (speed > 2 && speed < 30) {
+          speeds.push(speed);
+        }
+      }
+      if (speeds.length === 0) return false;
+      speeds.sort((a, b) => a - b);
+      const median = speeds[Math.floor(speeds.length / 2)];
+      return median >= SPEED_MIN && median <= SPEED_MAX;
+    }
+
+    // ============================================================
+    // ПРОВЕРКА ОТБОРА
+    // ============================================================
+    function checkSteal(zone, points) {
+      if (zone.owner === 'me') return false;
+      if (!zone.capturedAt) return false;
+      if (isProtected(zone)) return false;
+      if (points.length < 5) return false;
+      if (!checkSpeed(points)) {
+        alert(t('speedError'));
+        return false;
+      }
+      const perimeter = calcPerimeter(zone.coords);
+      if (perimeter === 0) return false;
+      let covered = 0;
+      for (let i = 0; i < points.length; i++) {
+        const p = points[i];
+        let minDist = Infinity;
+        for (let j = 0; j < zone.coords.length; j++) {
+          const d = map.distance(p, zone.coords[j]);
+          if (d < minDist) minDist = d;
+        }
+        if (minDist < BUFFER) {
+          covered++;
+        }
+      }
+      const coverage = covered / points.length;
+      return coverage >= STEAL_THRESHOLD;
     }
 
     // ============================================================
@@ -1447,9 +1446,9 @@
 
       zone.capturedAt = Date.now();
       zone.owner = 'me';
+      zone.ownerColor = playerColor;
       capturedZones.add(zone.id);
 
-      // Сохраняем в базу данных
       if (playerId) {
         await saveCapture(playerId, zoneId);
         await updateLeaderboard();
@@ -1462,14 +1461,15 @@
     }
 
     // ============================================================
-    // СОХРАНЕНИЕ В LOCALSTORAGE
+    // СОХРАНЕНИЕ
     // ============================================================
     function saveState() {
       try {
         const state = zonesData.map(z => ({
           id: z.id,
           capturedAt: z.capturedAt || null,
-          owner: z.owner || null
+          owner: z.owner || null,
+          ownerColor: z.ownerColor || null
         }));
         localStorage.setItem('runningGameState', JSON.stringify(state));
       } catch (e) {}
@@ -1485,10 +1485,26 @@
             if (found) {
               z.capturedAt = found.capturedAt;
               z.owner = found.owner || null;
+              z.ownerColor = found.ownerColor || null;
             }
           });
         }
       } catch (e) {}
+    }
+
+    // ============================================================
+    // UI
+    // ============================================================
+    function updateUI() {
+      const total = zonesData.length;
+      const captured = zonesData.filter(z => z.owner === 'me').length;
+      const totalPoints = zonesData
+        .filter(z => z.owner === 'me')
+        .reduce((sum, z) => sum + getPoints(z), 0);
+
+      zoneCountSpan.textContent = `🏛️ ${t('zones')}: ${captured}/${total}`;
+      capturedCountSpan.textContent = `✅ ${t('captured')}: ${captured}`;
+      totalPointsSpan.textContent = `⭐ ${t('points')}: ${totalPoints}`;
     }
 
     // ============================================================
@@ -1584,6 +1600,7 @@
         zonesData.forEach(z => {
           z.capturedAt = null;
           z.owner = null;
+          z.ownerColor = null;
         });
         capturedZones.clear();
         route = [];
@@ -1597,8 +1614,10 @@
     }
 
     // ============================================================
-    // ПЕРЕКЛЮЧЕНИЕ ТАБЛИЦЫ
+    // КНОПКИ
     // ============================================================
+    actionBtn.addEventListener('click', () => isRunning ? stopRun() : startRun());
+    resetBtn.addEventListener('click', resetGame);
     leaderboardToggle.addEventListener('click', () => {
       leaderboardVisible = !leaderboardVisible;
       leaderboardEl.style.display = leaderboardVisible ? 'block' : 'none';
@@ -1621,38 +1640,36 @@
     }
 
     // ============================================================
-    // КНОПКИ
-    // ============================================================
-    actionBtn.addEventListener('click', () => isRunning ? stopRun() : startRun());
-    resetBtn.addEventListener('click', resetGame);
-
-    // ============================================================
     // ЗАПУСК
     // ============================================================
     loadState();
     drawZones();
     updateAllTexts();
 
-    // Проверяем, есть ли сохранённый игрок
     const savedPlayer = localStorage.getItem('playerName');
+    const savedColor = localStorage.getItem('playerColor');
     if (savedPlayer) {
       currentPlayer = savedPlayer;
+      if (savedColor) playerColor = savedColor;
       document.getElementById('playerDisplay').textContent = `👤 ${savedPlayer}`;
-      // Загружаем данные игрока
-      getPlayerId(savedPlayer).then(id => {
-        if (id) {
-          playerId = id;
+      getPlayerId(savedPlayer).then(player => {
+        if (player) {
+          playerId = player.id;
+          if (player.color) {
+            playerColor = player.color;
+            localStorage.setItem('playerColor', playerColor);
+          }
           loadGameData().then(() => {
             drawZones();
             updateLeaderboard();
           });
-        } 
+        }
       });
     } else {
       showModal();
     }
 
-    console.log('🏃 Игра с подключением к Supabase запущена!');
+    console.log('🏃 Игра с выбором цвета запущена!');
   </script>
 </body>
 </html>
