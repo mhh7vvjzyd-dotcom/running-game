@@ -3,23 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Running Game - Nha Trang</title>
+    <title>Running Game Nha Trang</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background: #151d2b; color: white; height: 100vh; width: 100vw; overflow: hidden; position: relative; }
-        
-        #gameContainer { width: 100%; height: 100%; position: relative; background: #151d2b; }
-        #mapCanvas { width: 100%; height: 100%; position: absolute; top: 0; left: 0; overflow: hidden; background: #151d2b; }
+        body { background: #151d2b; color: white; height: 100vh; width: 100vw; overflow: hidden; }
+
+        /* --- ОКНО РЕГИСТРАЦИИ --- */
+        #regModal {
+            position: fixed; inset: 0; background: rgba(21, 29, 43, 0.95); backdrop-filter: blur(6px);
+            display: flex; justify-content: center; align-items: center; z-index: 9999;
+        }
+        .reg-box {
+            background: #1e293b; padding: 30px; border-radius: 24px; width: 85%; max-width: 340px;
+            text-align: center; border: 1px solid #334155;
+        }
+        .reg-box h2 { color: #fff; font-size: 22px; margin-bottom: 20px; }
+        .reg-input {
+            width: 100%; padding: 14px; border-radius: 12px; border: 1px solid #334155;
+            background: #0f172a; color: white; font-size: 16px; margin-bottom: 20px; outline: none; text-align: center;
+        }
+        .reg-palette { display: flex; justify-content: center; gap: 12px; margin-bottom: 25px; }
+        .reg-color {
+            width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
+            border: 3px solid transparent; transition: 0.2s;
+        }
+        .reg-color.selected { border-color: #fff; transform: scale(1.1); }
+        .reg-btn {
+            width: 100%; padding: 14px; border-radius: 30px; border: none;
+            background: #22c55e; color: white; font-size: 17px; font-weight: bold; cursor: pointer;
+        }
+
+        /* --- ИГРА --- */
+        #gameContainer { display: none; width: 100%; height: 100%; position: relative; background: #151d2b; }
+        #mapCanvas { width: 100%; height: 100%; position: absolute; inset: 0; overflow: hidden; }
 
         /* Зоны */
         .zone {
             position: absolute; background: rgba(40, 50, 68, 0.9);
-            border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center;
-            font-weight: 500; color: #b0b8c8; font-size: 14px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-            transition: all 0.3s ease; z-index: 5;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-weight: 500; color: #b0b8c8; font-size: 14px;
+            transition: all 0.3s; z-index: 5; border: 1px solid rgba(255,255,255,0.05);
         }
-        .zone.captured { border-color: white; color: white; transform: scale(1.02); border: 1px solid white; }
+        .zone.captured { border-color: white; color: white; transform: scale(1.02); }
         .zone .capturer-name { font-size: 11px; margin-top: 2px; font-weight: 400; opacity: 0.9; }
 
         /* Точка игрока */
@@ -31,26 +56,25 @@
 
         /* HUD */
         #hud {
-            position: absolute; top: 15px; left: 15px; right: 15px; z-index: 15;
+            position: absolute; top: 20px; left: 20px; right: 20px; z-index: 15;
             display: flex; justify-content: space-between; align-items: center;
         }
         .hud-left, .hud-right {
             background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(8px);
-            border-radius: 14px; padding: 8px 14px; display: flex; align-items: center; gap: 6px;
+            border-radius: 14px; padding: 8px 16px; display: flex; align-items: center; gap: 8px;
             color: #94a3b8; font-size: 13px; border: 1px solid rgba(255,255,255,0.1);
         }
-        .hud-val { font-size: 18px; font-weight: 600; color: #fff; }
-        .hud-icon { font-size: 16px; }
+        .hud-val { font-size: 20px; font-weight: 700; color: #fff; }
 
         /* Нижние кнопки */
         #bottomControls {
-            position: absolute; bottom: 30px; left: 0; right: 0;
+            position: absolute; bottom: 35px; left: 0; right: 0;
             display: flex; justify-content: center; align-items: center; gap: 15px; z-index: 15; padding: 0 20px;
         }
         #btnAction {
             flex: 1; max-width: 260px; padding: 16px 0; border-radius: 50px; border: none;
-            background: #3ecf8e; color: white; font-size: 18px; font-weight: 700;
-            box-shadow: 0 8px 25px rgba(62, 207, 142, 0.3); cursor: pointer; transition: all 0.2s;
+            background: #22c55e; color: white; font-size: 18px; font-weight: 700;
+            box-shadow: 0 8px 25px rgba(34, 197, 94, 0.3); cursor: pointer; transition: all 0.2s;
             display: flex; justify-content: center; align-items: center; gap: 8px;
         }
         #btnAction:disabled { opacity: 0.5; transform: scale(0.95); box-shadow: none; }
@@ -63,12 +87,12 @@
 
         /* Таблица */
         #leaderboardBtn {
-            position: absolute; bottom: 100px; right: 20px; z-index: 15;
+            position: absolute; bottom: 110px; right: 20px; z-index: 15;
             background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(6px);
-            border: 1px solid rgba(255,255,255,0.1); color: #facc15; padding: 10px 14px; border-radius: 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+            border: 1px solid rgba(255,255,255,0.1); color: #facc15; padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 600; cursor: pointer;
         }
         #leaderboard {
-            position: absolute; bottom: 150px; right: 20px; left: 20px; max-height: 40vh;
+            position: absolute; bottom: 160px; right: 20px; left: 20px; max-height: 45vh;
             background: rgba(21, 29, 43, 0.95); backdrop-filter: blur(10px); border: 1px solid #334155;
             border-radius: 16px; padding: 20px; z-index: 15; display: none; overflow-y: auto;
         }
@@ -76,30 +100,47 @@
         .lb-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px; }
         .lb-item:last-child { border-bottom: none; }
         .lb-item .rank { color: #94a3b8; width: 25px; }
-        .lb-item .score { font-weight: 600; color: #facc15; }
+        .lb-item .score { font-weight: 700; color: #facc15; }
     </style>
 </head>
 <body>
 
+    <!-- 1. РЕГИСТРАЦИЯ -->
+    <div id="regModal">
+        <div class="reg-box">
+            <h2>🏁 Вход</h2>
+            <input type="text" id="playerNameInput" class="reg-input" placeholder="Твой ник" maxlength="12">
+            <div class="reg-palette" id="colorPalette">
+                <div class="reg-color" style="background: #ef4444;" data-color="#ef4444" onclick="pickColor(this)"></div>
+                <div class="reg-color" style="background: #3b82f6;" data-color="#3b82f6" onclick="pickColor(this)"></div>
+                <div class="reg-color" style="background: #22c55e;" data-color="#22c55e" onclick="pickColor(this)"></div>
+                <div class="reg-color" style="background: #eab308;" data-color="#eab308" onclick="pickColor(this)"></div>
+                <div class="reg-color" style="background: #a855f7;" data-color="#a855f7" onclick="pickColor(this)"></div>
+            </div>
+            <button class="reg-btn" onclick="registerPlayer()">Начать игру</button>
+        </div>
+    </div>
+
+    <!-- 2. ИГРА -->
     <div id="gameContainer">
         <div id="mapCanvas"></div>
 
-        <!-- HUD -->
         <div id="hud">
             <div class="hud-left">
-                <span class="hud-icon">🏆</span>
+                <span>🏆</span>
                 <span class="hud-val" id="playerScore">0</span>
+            </div>
+            <div class="hud-right">
+                <span>Зон: 22</span>
             </div>
         </div>
 
-        <!-- Таблица -->
         <button id="leaderboardBtn" onclick="toggleLeaderboard()">🏆 Таблица</button>
         <div id="leaderboard">
             <h3>Турнирная таблица</h3>
             <div id="lbContent"><p style="color:#64748b; text-align:center; font-size:13px;">Пока никого нет</p></div>
         </div>
 
-        <!-- Нижние кнопки -->
         <div id="bottomControls">
             <button id="btnTrash" onclick="resetGame()">🗑️</button>
             <button id="btnAction" onclick="startCapture()">🏃 СТАРТ</button>
@@ -107,34 +148,55 @@
     </div>
 
     <script>
-        // --- ДАННЫЕ ---
+        // --- ДАННЫЕ ИГРОКА ---
+        let player = { name: 'Игрок', color: '#ef4444', score: 0 };
         let capturedZones = {}; 
         let isCapturing = false;
+
+        // Позиция красной точки (для теста)
         let pX = 50, pY = 50;
 
-        // Координаты 22 зон
+        // --- 22 ЗОНЫ (Твоя оригинальная карта) ---
         const zones = [
-            { id: 8, x: 50, y: 10, w: 60, h: 35 },
-            { id: 9, x: 45, y: 18, w: 55, h: 35 },
-            { id: 10, x: 35, y: 26, w: 60, h: 35 },
-            { id: 11, x: 55, y: 30, w: 50, h: 30 },
-            { id: 12, x: 35, y: 36, w: 55, h: 35 },
-            { id: 13, x: 60, y: 38, w: 50, h: 30 },
-            { id: 14, x: 40, y: 45, w: 55, h: 35 },
-            { id: 15, x: 25, y: 48, w: 55, h: 30 },
-            { id: 16, x: 50, y: 50, w: 50, h: 30 },
-            { id: 17, x: 65, y: 55, w: 55, h: 30 },
-            { id: 18, x: 40, y: 62, w: 55, h: 35 },
-            { id: 19, x: 25, y: 68, w: 55, h: 30 },
-            { id: 20, x: 55, y: 70, w: 50, h: 30 },
-            { id: 21, x: 35, y: 78, w: 55, h: 30 },
-            { id: 22, x: 50, y: 80, w: 50, h: 30 }
+            { id: 8, x: 45, y: 5, w: 55, h: 32 },
+            { id: 9, x: 40, y: 12, w: 55, h: 32 },
+            { id: 10, x: 25, y: 19, w: 55, h: 32 },
+            { id: 11, x: 60, y: 25, w: 50, h: 32 },
+            { id: 12, x: 30, y: 32, w: 55, h: 32 },
+            { id: 13, x: 65, y: 36, w: 50, h: 32 },
+            { id: 14, x: 40, y: 40, w: 55, h: 32 },
+            { id: 15, x: 20, y: 45, w: 50, h: 32 },
+            { id: 16, x: 50, y: 48, w: 55, h: 32 },
+            { id: 17, x: 70, y: 53, w: 50, h: 32 },
+            { id: 18, x: 40, y: 58, w: 55, h: 32 },
+            { id: 19, x: 20, y: 62, w: 55, h: 32 },
+            { id: 20, x: 55, y: 68, w: 50, h: 32 },
+            { id: 21, x: 35, y: 75, w: 55, h: 32 },
+            { id: 22, x: 50, y: 80, w: 50, h: 32 }
         ];
+
+        // --- ЛОГИКА ---
+        function pickColor(el) {
+            document.querySelectorAll('.reg-color').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+            player.color = el.getAttribute('data-color');
+        }
+
+        function registerPlayer() {
+            const name = document.getElementById('playerNameInput').value.trim();
+            if (!name) { alert('Введи имя!'); return; }
+            player.name = name;
+            document.getElementById('regModal').style.display = 'none';
+            document.getElementById('gameContainer').style.display = 'block';
+            initGame();
+        }
 
         function initGame() {
             renderMap();
             updateHUD();
+            // Запускаем движение точки для теста
             setInterval(movePlayer, 1800);
+            // Демо-боты для визуализации (Иван и Петр)
             setTimeout(() => {
                 captureBotZone(8, 'Иван', '#3b82f6');
                 captureBotZone(16, 'Петр', '#22c55e');
@@ -211,7 +273,11 @@
                     }
                 }
                 if (targetZone) {
-                    capturedZones[targetZone.id] = { playerName: 'Евгений', color: '#ef4444' };
+                    capturedZones[targetZone.id] = { 
+                        playerName: player.name, 
+                        color: player.color 
+                    };
+                    player.score++;
                     updateZoneVisual(targetZone.id);
                     updateHUD();
                     updateLeaderboard();
@@ -249,7 +315,9 @@
             el.innerHTML = `<span>${zoneId}</span><span class="capturer-name">${data.playerName}</span>`;
         }
 
-        function updateHUD() { document.getElementById('playerScore').innerText = Object.keys(capturedZones).length; }
+        function updateHUD() { 
+            document.getElementById('playerScore').innerText = player.score; 
+        }
 
         function toggleLeaderboard() {
             const el = document.getElementById('leaderboard');
@@ -264,8 +332,12 @@
                 if(!scores[z.playerName]) scores[z.playerName] = 0;
                 scores[z.playerName]++;
             });
+            if(!scores[player.name]) scores[player.name] = 0;
             let sorted = Object.entries(scores).sort((a,b) => b[1] - a[1]);
-            if(sorted.length === 0) return;
+            if(sorted.length === 0) {
+                lb.innerHTML = '<p style="color:#64748b; text-align:center;">Захвати зону</p>';
+                return;
+            }
             lb.innerHTML = sorted.map(([name, score], i) => 
                 `<div class="lb-item"><span><span class="rank">${i+1}</span> ${name}</span><span class="score">${score}</span></div>`
             ).join('');
@@ -274,6 +346,7 @@
         function resetGame() {
             if(confirm('Сбросить прогресс?')) {
                 capturedZones = {};
+                player.score = 0;
                 document.querySelectorAll('.zone').forEach(el => {
                     el.style.background = 'rgba(40, 50, 68, 0.9)';
                     el.classList.remove('captured');
@@ -288,9 +361,6 @@
                 document.getElementById('leaderboard').style.display = 'none';
             }
         }
-
-        // Сразу запускаем игру
-        initGame();
     </script>
 </body>
 </html>
