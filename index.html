@@ -1,387 +1,69 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Running Game - Nha Trang</title>
-    <style>
-        /* СБРОС И БАЗОВЫЙ ФОН */
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background: #151d2b; color: white; height: 100vh; width: 100vw; overflow: hidden; position: relative; }
+<!-- Блок регистрации (ВСТАВИТЬ В INDEX.HTML ПЕРЕД ЗАКРЫВАЮЩИМ ТЕГОМ </body>) -->
 
-        /* --- ОКНО РЕГИСТРАЦИИ (Адаптировано под ваш стиль) --- */
-        #registerModal {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(21, 29, 43, 0.95); backdrop-filter: blur(8px);
-            display: flex; justify-content: center; align-items: center; z-index: 9999;
-        }
-        .reg-box {
-            background: #202b3e; padding: 24px; border-radius: 20px; width: 85%; max-width: 320px;
-            text-align: center; border: 1px solid #334155;
-        }
-        .reg-box h2 { color: #fff; font-size: 20px; margin-bottom: 15px; font-weight: 600; }
-        .reg-input {
-            width: 100%; padding: 12px; border-radius: 12px; border: none;
-            background: #151d2b; color: white; font-size: 16px; margin-bottom: 15px; outline: none;
-        }
-        .reg-input::placeholder { color: #64748b; }
-        .palette { display: flex; justify-content: center; gap: 12px; margin-bottom: 20px; }
-        .c-block {
-            width: 36px; height: 36px; border-radius: 50%; cursor: pointer;
-            border: 2px solid transparent; transition: 0.2s;
-        }
-        .c-block.active { border-color: #fff; transform: scale(1.2); box-shadow: 0 0 12px rgba(255,255,255,0.3); }
-        .btn-register {
-            width: 100%; padding: 12px; border-radius: 30px; border: none;
-            background: #22c55e; color: white; font-size: 16px; font-weight: 600; cursor: pointer;
-        }
+<style>
+  #regModal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(5px);
+    display: flex; justify-content: center; align-items: center; z-index: 9999;
+  }
+  .reg-box {
+    background: #1e1e1e; padding: 25px; border-radius: 20px; width: 85%; max-width: 320px;
+    text-align: center; border: 1px solid #333;
+  }
+  .reg-box h2 { color: white; margin-bottom: 15px; font-size: 20px; }
+  .reg-input {
+    width: 100%; padding: 12px; border-radius: 10px; border: none;
+    background: #2d2d2d; color: white; font-size: 16px; margin-bottom: 15px; outline: none;
+  }
+  .reg-palette { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+  .reg-color {
+    width: 35px; height: 35px; border-radius: 50%; cursor: pointer;
+    border: 2px solid transparent; transition: 0.2s;
+  }
+  .reg-color.selected { border: 2px solid white; transform: scale(1.1); }
+  .reg-btn {
+    width: 100%; padding: 12px; border-radius: 30px; border: none;
+    background: #22c55e; color: white; font-size: 16px; font-weight: bold; cursor: pointer;
+  }
+</style>
 
-        /* --- ИГРОВОЙ МИР (Исходный стиль) --- */
-        #gameContainer { display: none; width: 100%; height: 100%; position: relative; background: #151d2b; }
-        
-        #mapCanvas {
-            width: 100%; height: 100%; position: absolute; top: 0; left: 0;
-            overflow: hidden; background: #151d2b;
-        }
-
-        /* Зоны (Аккуратные прямоугольники как на скрине) */
-        .zone {
-            position: absolute; background: rgba(40, 50, 68, 0.9);
-            border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center;
-            font-weight: 500; color: #b0b8c8; font-size: 14px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-            transition: all 0.3s ease; z-index: 5;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);
-        }
-        .zone.captured { border-color: white; color: white; transform: scale(1.02); border: 1px solid white; }
-        .zone .capturer-name { font-size: 11px; margin-top: 2px; font-weight: 400; opacity: 0.9; }
-
-        /* Точка игрока (Красная с белой окантовкой) */
-        .player-dot {
-            position: absolute; width: 16px; height: 16px; border-radius: 50%;
-            background: #ff4d4d; border: 2px solid #fff; box-shadow: 0 0 20px rgba(255, 77, 77, 0.7);
-            transform: translate(-50%, -50%); transition: all 0.3s linear; pointer-events: none; z-index: 20;
-        }
-
-        /* HUD (Верхняя панель) */
-        #hud {
-            position: absolute; top: 15px; left: 15px; right: 15px; z-index: 15;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .hud-left, .hud-right {
-            background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(8px);
-            border-radius: 14px; padding: 8px 14px; display: flex; align-items: center; gap: 6px;
-            color: #94a3b8; font-size: 13px; border: 1px solid rgba(255,255,255,0.1);
-        }
-        .hud-val { font-size: 18px; font-weight: 600; color: #fff; }
-        .hud-icon { font-size: 16px; }
-        .hud-right { background: transparent; backdrop-filter: none; border: none; padding: 0; font-size: 13px; }
-
-        /* Кнопки управления (Идеальный исходный стиль) */
-        #bottomControls {
-            position: absolute; bottom: 30px; left: 0; right: 0;
-            display: flex; justify-content: center; align-items: center; gap: 15px; z-index: 15; padding: 0 20px;
-        }
-        #btnAction {
-            flex: 1; max-width: 260px; padding: 16px 0; border-radius: 50px; border: none;
-            background: #3ecf8e; color: white; font-size: 18px; font-weight: 700;
-            box-shadow: 0 8px 25px rgba(62, 207, 142, 0.3); cursor: pointer; transition: all 0.2s;
-            display: flex; justify-content: center; align-items: center; gap: 8px;
-        }
-        #btnAction:disabled { opacity: 0.5; transform: scale(0.95); box-shadow: none; }
-        #btnAction.ready { background: #facc15; color: #151d2b; box-shadow: 0 8px 25px rgba(250, 204, 21, 0.4); }
-        
-        #btnTrash {
-            width: 48px; height: 48px; border-radius: 50%; background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(6px); border: none; color: #94a3b8; font-size: 18px; display: flex; justify-content: center; align-items: center; cursor: pointer;
-        }
-
-        /* Таблица */
-        #leaderboardBtn {
-            position: absolute; bottom: 100px; right: 20px; z-index: 15;
-            background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(6px);
-            border: 1px solid rgba(255,255,255,0.1); color: #facc15; padding: 10px 14px; border-radius: 12px; font-size: 13px; font-weight: 600; cursor: pointer;
-        }
-        #leaderboard {
-            position: absolute; bottom: 150px; right: 20px; left: 20px; max-height: 40vh;
-            background: rgba(21, 29, 43, 0.95); backdrop-filter: blur(10px); border: 1px solid #334155;
-            border-radius: 16px; padding: 20px; z-index: 15; display: none; overflow-y: auto;
-        }
-        #leaderboard h3 { color: #facc15; margin-bottom: 12px; font-size: 15px; text-align: center; }
-        .lb-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px; }
-        .lb-item:last-child { border-bottom: none; }
-        .lb-item .rank { color: #94a3b8; width: 25px; }
-        .lb-item .score { font-weight: 600; color: #facc15; }
-
-        /* Базовая кнопка ОС (Не трогаем) */
-        #osButtons { position: absolute; bottom: 10px; left: 0; right: 0; z-index: 1; pointer-events: none; }
-    </style>
-</head>
-<body>
-
-    <!-- 1. РЕГИСТРАЦИЯ -->
-    <div id="registerModal">
-        <div class="reg-box">
-            <h2>Вход в игру</h2>
-            <input type="text" id="playerNameInput" class="reg-input" placeholder="Твой ник" maxlength="12">
-            <div class="palette" id="colorPalette">
-                <div class="c-block" style="background: #ef4444;" data-color="#ef4444" onclick="pickColor(this)"></div>
-                <div class="c-block" style="background: #3b82f6;" data-color="#3b82f6" onclick="pickColor(this)"></div>
-                <div class="c-block" style="background: #22c55e;" data-color="#22c55e" onclick="pickColor(this)"></div>
-                <div class="c-block" style="background: #eab308;" data-color="#eab308" onclick="pickColor(this)"></div>
-                <div class="c-block" style="background: #a855f7;" data-color="#a855f7" onclick="pickColor(this)"></div>
-            </div>
-            <button class="btn-register" onclick="registerPlayer()">Войти</button>
-        </div>
+<div id="regModal">
+  <div class="reg-box">
+    <h2>Вход</h2>
+    <input type="text" id="regName" class="reg-input" placeholder="Ваш ник" maxlength="12">
+    <div class="reg-palette">
+      <div class="reg-color" style="background:#ef4444;" onclick="selectRegColor(this)"></div>
+      <div class="reg-color" style="background:#3b82f6;" onclick="selectRegColor(this)"></div>
+      <div class="reg-color" style="background:#22c55e;" onclick="selectRegColor(this)"></div>
+      <div class="reg-color" style="background:#eab308;" onclick="selectRegColor(this)"></div>
+      <div class="reg-color" style="background:#a855f7;" onclick="selectRegColor(this)"></div>
     </div>
+    <button class="reg-btn" onclick="finishReg()">Начать игру</button>
+  </div>
+</div>
 
-    <!-- 2. ИГРА -->
-    <div id="gameContainer">
-        <div id="mapCanvas"></div>
+<script>
+  let regColor = '#ef4444';
+  
+  function selectRegColor(el) {
+    document.querySelectorAll('.reg-color').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    regColor = el.style.backgroundColor;
+  }
 
-        <!-- HUD -->
-        <div id="hud">
-            <div class="hud-left">
-                <span class="hud-icon">🏆</span>
-                <span class="hud-val" id="playerScore">0</span>
-            </div>
-            <div class="hud-right">
-                <span>Зон: <span id="totalZones">22</span></span>
-            </div>
-        </div>
-
-        <!-- Таблица -->
-        <button id="leaderboardBtn" onclick="toggleLeaderboard()">🏆 Таблица</button>
-        <div id="leaderboard">
-            <h3>Турнирная таблица</h3>
-            <div id="lbContent"><p style="color:#64748b; text-align:center; font-size:13px;">Пока никого нет</p></div>
-        </div>
-
-        <!-- Нижние кнопки -->
-        <div id="bottomControls">
-            <button id="btnTrash" onclick="resetGame()">🗑️</button>
-            <button id="btnAction" onclick="startCapture()">🏃 СТАРТ</button>
-        </div>
-    </div>
-
-    <script>
-        // --- ДАННЫЕ ---
-        let player = { name: 'Игрок', color: '#ef4444', score: 0 };
-        let capturedZones = {}; 
-        let isCapturing = false;
-        let pX = 50, pY = 50;
-
-        // Координаты зон (максимально приближены к вашей карте)
-        const zones = [
-            { id: 8, x: 50, y: 10, w: 60, h: 35 },
-            { id: 9, x: 45, y: 18, w: 55, h: 35 },
-            { id: 10, x: 35, y: 26, w: 60, h: 35 },
-            { id: 11, x: 55, y: 30, w: 50, h: 30 },
-            { id: 12, x: 35, y: 36, w: 55, h: 35 },
-            { id: 13, x: 60, y: 38, w: 50, h: 30 },
-            { id: 14, x: 40, y: 45, w: 55, h: 35 },
-            { id: 15, x: 25, y: 48, w: 55, h: 30 },
-            { id: 16, x: 50, y: 50, w: 50, h: 30 },
-            { id: 17, x: 65, y: 55, w: 55, h: 30 },
-            { id: 18, x: 40, y: 62, w: 55, h: 35 },
-            { id: 19, x: 25, y: 68, w: 55, h: 30 },
-            { id: 20, x: 55, y: 70, w: 50, h: 30 },
-            { id: 21, x: 35, y: 78, w: 55, h: 30 },
-            { id: 22, x: 50, y: 80, w: 50, h: 30 }
-        ];
-
-        // --- ЛОГИКА ИГРЫ ---
-        function pickColor(el) {
-            document.querySelectorAll('.c-block').forEach(c => c.classList.remove('active'));
-            el.classList.add('active');
-            player.color = el.getAttribute('data-color');
-        }
-
-        function registerPlayer() {
-            const name = document.getElementById('playerNameInput').value.trim();
-            if (!name) { alert('Введите имя!'); return; }
-            player.name = name;
-            document.getElementById('registerModal').style.display = 'none';
-            document.getElementById('gameContainer').style.display = 'block';
-            initGame();
-        }
-
-        function initGame() {
-            renderMap();
-            updateHUD();
-            document.getElementById('totalZones').innerText = zones.length;
-            
-            // Запуск GPS-симуляции
-            setInterval(movePlayer, 1800);
-            
-            // Демо-захват (боты)
-            setTimeout(() => {
-                captureBotZone(8, 'Иван', '#3b82f6');
-                captureBotZone(16, 'Петр', '#22c55e');
-            }, 1000);
-        }
-
-        function renderMap() {
-            const map = document.getElementById('mapCanvas');
-            map.innerHTML = '';
-            
-            zones.forEach(z => {
-                const div = document.createElement('div');
-                div.className = 'zone';
-                div.id = `zone-${z.id}`;
-                div.style.left = z.x + '%'; 
-                div.style.top = z.y + '%';
-                div.style.width = z.w + 'px'; 
-                div.style.height = z.h + 'px';
-                div.innerHTML = `<span>${z.id}</span>`;
-                map.appendChild(div);
-            });
-
-            const dot = document.createElement('div');
-            dot.id = 'playerDot';
-            dot.className = 'player-dot';
-            dot.style.left = '50%'; dot.style.top = '50%';
-            map.appendChild(dot);
-        }
-
-        function movePlayer() {
-            if (isCapturing) return;
-            pX += (Math.random() - 0.5) * 5;
-            pY += (Math.random() - 0.5) * 5;
-            pX = Math.max(2, Math.min(98, pX));
-            pY = Math.max(2, Math.min(98, pY));
-            document.getElementById('playerDot').style.left = pX + '%';
-            document.getElementById('playerDot').style.top = pY + '%';
-            checkZoneProximity();
-        }
-
-        function checkZoneProximity() {
-            let inZone = false;
-            zones.forEach(z => {
-                if (pX > z.x && pX < (z.x + (z.w / 100) * 85) && 
-                    pY > z.y && pY < (z.y + (z.h / 100) * 85)) {
-                    inZone = true;
-                    if (!capturedZones[z.id]) {
-                        document.getElementById('btnAction').className = 'ready';
-                        document.getElementById('btnAction').innerHTML = '⚔️ ЗАХВАТИТЬ';
-                    } else {
-                        document.getElementById('btnAction').disabled = true;
-                        document.getElementById('btnAction').className = '';
-                        document.getElementById('btnAction').innerHTML = '⛔ ЗАНЯТО';
-                    }
-                }
-            });
-            if (!inZone) {
-                document.getElementById('btnAction').className = '';
-                document.getElementById('btnAction').disabled = false;
-                document.getElementById('btnAction').innerHTML = '🏃 СТАРТ';
-                isCapturing = false;
-            }
-        }
-
-        function startCapture() {
-            if (isCapturing || document.getElementById('btnAction').disabled) return;
-            isCapturing = true;
-            document.getElementById('btnAction').disabled = true;
-            document.getElementById('btnAction').innerHTML = '⏳ ЗАХВАТ...';
-            
-            setTimeout(() => {
-                let targetZone = null;
-                for(let z of zones) {
-                    if(!capturedZones[z.id]) {
-                        if (pX > z.x && pX < (z.x + (z.w / 100) * 85) && 
-                            pY > z.y && pY < (z.y + (z.h / 100) * 85)) {
-                            targetZone = z; break;
-                        }
-                    }
-                }
-
-                if (targetZone) {
-                    capturedZones[targetZone.id] = {
-                        playerName: player.name,
-                        color: player.color,
-                        timestamp: Date.now()
-                    };
-                    player.score++;
-                    updateZoneVisual(targetZone.id);
-                    updateHUD();
-                    updateLeaderboard();
-                    document.getElementById('btnAction').innerHTML = '✅ ГОТОВО!';
-                    setTimeout(() => {
-                        document.getElementById('btnAction').disabled = false;
-                        document.getElementById('btnAction').className = '';
-                        document.getElementById('btnAction').innerHTML = '🏃 СТАРТ';
-                        isCapturing = false;
-                        checkZoneProximity();
-                    }, 1000);
-                } else {
-                    document.getElementById('btnAction').innerHTML = '❌ ОШИБКА';
-                    setTimeout(() => {
-                        document.getElementById('btnAction').disabled = false;
-                        document.getElementById('btnAction').className = '';
-                        document.getElementById('btnAction').innerHTML = '🏃 СТАРТ';
-                        isCapturing = false;
-                    }, 1000);
-                }
-            }, 2000);
-        }
-
-        function captureBotZone(id, name, color) {
-            capturedZones[id] = { playerName: name, color: color, timestamp: Date.now() };
-            updateZoneVisual(id);
-            updateLeaderboard();
-        }
-
-        function updateZoneVisual(zoneId) {
-            const el = document.getElementById(`zone-${zoneId}`);
-            const data = capturedZones[zoneId];
-            el.style.background = data.color;
-            el.classList.add('captured');
-            el.innerHTML = `<span>${zoneId}</span><span class="capturer-name">${data.playerName}</span>`;
-        }
-
-        function updateHUD() {
-            document.getElementById('playerScore').innerText = player.score;
-        }
-
-        function toggleLeaderboard() {
-            const el = document.getElementById('leaderboard');
-            el.style.display = el.style.display === 'none' ? 'block' : 'none';
-            updateLeaderboard();
-        }
-
-        function updateLeaderboard() {
-            const lb = document.getElementById('lbContent');
-            let scores = {};
-            Object.values(capturedZones).forEach(z => {
-                if(!scores[z.playerName]) scores[z.playerName] = 0;
-                scores[z.playerName]++;
-            });
-            if(!scores[player.name]) scores[player.name] = 0;
-            let sorted = Object.entries(scores).sort((a,b) => b[1] - a[1]);
-            if(sorted.length === 0) return;
-            lb.innerHTML = sorted.map(([name, score], i) => 
-                `<div class="lb-item"><span><span class="rank">${i+1}</span> ${name}</span><span class="score">${score}</span></div>`
-            ).join('');
-        }
-
-        function resetGame() {
-            if(confirm('Сбросить прогресс?')) {
-                capturedZones = {};
-                player.score = 0;
-                document.querySelectorAll('.zone').forEach(el => {
-                    el.style.background = 'rgba(40, 50, 68, 0.9)';
-                    el.classList.remove('captured');
-                    el.innerHTML = `<span>${el.id.replace('zone-', '')}</span>`;
-                    el.style.border = '1px solid rgba(255,255,255,0.05)';
-                });
-                updateHUD();
-                updateLeaderboard();
-                document.getElementById('btnAction').disabled = false;
-                document.getElementById('btnAction').className = '';
-                document.getElementById('btnAction').innerHTML = '🏃 СТАРТ';
-                document.getElementById('leaderboard').style.display = 'none';
-            }
-        }
-    </script>
-</body>
-</html>
+  function finishReg() {
+    const name = document.getElementById('regName').value.trim();
+    if(!name) { alert('Введите имя!'); return; }
+    
+    // Сохраняем данные в глобальные переменные для вашей карты
+    window.myPlayer = { name: name, color: regColor };
+    
+    // Закрываем окно
+    document.getElementById('regModal').style.display = 'none';
+    
+    // ЗАПУСК ВАШЕЙ КАРТЫ (тут разработчик впишет вашу функцию старта)
+    if(typeof window.startGame === 'function') {
+       window.startGame(name, regColor); 
+    }
+  }
+</script>
