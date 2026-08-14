@@ -134,20 +134,8 @@
       border: 1px solid rgba(255,255,255,0.06);
       min-width: 160px;
     }
-    .leaderboard h4 {
-      margin-bottom: 6px;
-      border-bottom: 1px solid #444;
-      padding-bottom: 4px;
-      font-size: 13px;
-      text-align: center;
-    }
-    .lb-item {
-      display: flex;
-      justify-content: space-between;
-      padding: 3px 0;
-      border-bottom: 1px solid #2a2a2a;
-      font-size: 11px;
-    }
+    .leaderboard h4 { margin-bottom: 6px; border-bottom: 1px solid #444; padding-bottom: 4px; font-size: 13px; text-align: center; }
+    .lb-item { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #2a2a2a; font-size: 11px; }
     .lb-item .name { color: #aaa; }
     .lb-item .score { color: #f1c40f; font-weight: bold; }
     .lb-item.me .name { color: #2ecc71; font-weight: bold; }
@@ -156,16 +144,49 @@
     .lb-pos.top1 { color: #f1c40f; }
     .lb-pos.top2 { color: #c0c0c0; }
     .lb-pos.top3 { color: #cd7f32; }
-    .leaderboard .empty {
+    .leaderboard .empty { text-align: center; color: #555; padding: 8px 0; }
+
+    .lang-switcher {
+      position: fixed;
+      top: 80px;
+      right: 16px;
+      z-index: 1000;
+      display: flex;
+      gap: 6px;
+      flex-direction: column;
+    }
+    .lang-btn-small {
+      background: rgba(0,0,0,0.7);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #888;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: bold;
+      transition: 0.3s;
+      backdrop-filter: blur(8px);
+      min-width: 36px;
       text-align: center;
-      color: #555;
-      padding: 8px 0;
+    }
+    .lang-btn-small:hover { background: rgba(255,255,255,0.1); }
+    .lang-btn-small.active { 
+      border-color: #2ecc71; 
+      color: #2ecc71; 
+      background: rgba(46,204,113,0.15);
+      box-shadow: 0 0 15px rgba(46,204,113,0.15);
     }
   </style>
 </head>
 <body>
 
   <div id="map"></div>
+
+  <div class="lang-switcher">
+    <button class="lang-btn-small active" data-lang="ru" id="langRu">🇷🇺</button>
+    <button class="lang-btn-small" data-lang="en" id="langEn">🇬🇧</button>
+    <button class="lang-btn-small" data-lang="vi" id="langVi">🇻🇳</button>
+  </div>
 
   <div class="info-panel" id="infoPanel">
     <span id="zoneCount">🏛️ Зон: 0/22</span>
@@ -175,12 +196,12 @@
   </div>
 
   <div class="stats" id="statsPanel">
-    <h4>📊 Статистика</h4>
+    <h4 id="statsTitle">📊 Статистика</h4>
     <div id="statsContent">Кликни на зону</div>
   </div>
 
   <div class="leaderboard" id="leaderboard">
-    <h4>🏆 ТУРНИРНАЯ ТАБЛИЦА</h4>
+    <h4 id="lbTitle">🏆 ТУРНИРНАЯ ТАБЛИЦА</h4>
     <div id="lbContent">Загрузка...</div>
   </div>
 
@@ -191,6 +212,132 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
+    // ============================================================
+    // ПЕРЕВОДЫ
+    // ============================================================
+    const LANG = {
+      ru: {
+        zones: 'Зон',
+        captured: 'Захвачено',
+        points: 'Очков',
+        leaderboard: '🏆 ТУРНИРНАЯ ТАБЛИЦА',
+        stats: '📊 Статистика',
+        start: '🏃 СТАРТ',
+        stop: '⏹ СТОП',
+        free: '⬜ Свободна',
+        capturedLabel: '✅ Захвачена',
+        vulnerable: '⚠️ Уязвима',
+        protected: '🛡️ Защищена',
+        other: '👤 Занята другим игроком',
+        clickZone: 'Кликни на зону',
+        noPlayers: 'Нет игроков',
+        reset: 'Сбросить все зоны?',
+        tooShort: '❌ Слишком короткий маршрут',
+        speedError: '❌ Скорость не соответствует бегу!',
+        needMorePoints: '❌ Нужно пробежать ≥ 80% периметра зоны!',
+        notClosed: '❌ Маршрут не замкнут! Вернись в старт (< 50 м)',
+        stolen: '✅ Зона отобрана!',
+        capturedZone: '✅ Зона захвачена!',
+        alreadyYours: '❌ Это твоя зона!',
+        protectedZone: '🛡️ Зона защищена! Подожди 24 часа.',
+        yourZone: 'Ты',
+        otherPlayer: 'Другой игрок',
+        perimeter: 'Периметр',
+        sector: 'Сектор',
+        owner: 'Владелец',
+        noZones: 'Маршрут не захватил ни одной зоны'
+      },
+      en: {
+        zones: 'Zones',
+        captured: 'Captured',
+        points: 'Points',
+        leaderboard: '🏆 LEADERBOARD',
+        stats: '📊 Statistics',
+        start: '🏃 START',
+        stop: '⏹ STOP',
+        free: '⬜ Free',
+        capturedLabel: '✅ Captured',
+        vulnerable: '⚠️ Vulnerable',
+        protected: '🛡️ Protected',
+        other: '👤 Occupied',
+        clickZone: 'Click on zone',
+        noPlayers: 'No players',
+        reset: 'Reset all zones?',
+        tooShort: '❌ Route too short',
+        speedError: '❌ Speed does not match running!',
+        needMorePoints: '❌ Need to run ≥ 80% of zone perimeter!',
+        notClosed: '❌ Route not closed! Return to start (< 50 m)',
+        stolen: '✅ Zone stolen!',
+        capturedZone: '✅ Zone captured!',
+        alreadyYours: '❌ This is your zone!',
+        protectedZone: '🛡️ Zone is protected! Wait 24 hours.',
+        yourZone: 'You',
+        otherPlayer: 'Other player',
+        perimeter: 'Perimeter',
+        sector: 'Sector',
+        owner: 'Owner',
+        noZones: 'Route captured no zones'
+      },
+      vi: {
+        zones: 'Khu vực',
+        captured: 'Đã chiếm',
+        points: 'Điểm',
+        leaderboard: '🏆 BẢNG XẾP HẠNG',
+        stats: '📊 Thống kê',
+        start: '🏃 BẮT ĐẦU',
+        stop: '⏹ DỪNG',
+        free: '⬜ Trống',
+        capturedLabel: '✅ Đã chiếm',
+        vulnerable: '⚠️ Dễ bị tấn công',
+        protected: '🛡️ Được bảo vệ',
+        other: '👤 Đã có chủ',
+        clickZone: 'Nhấn vào khu vực',
+        noPlayers: 'Không có người chơi',
+        reset: 'Đặt lại tất cả khu vực?',
+        tooShort: '❌ Đường chạy quá ngắn',
+        speedError: '❌ Tốc độ không phù hợp với chạy bộ!',
+        needMorePoints: '❌ Cần chạy ≥ 80% chu vi khu vực!',
+        notClosed: '❌ Đường chạy chưa khép kín! Quay lại điểm xuất phát (< 50 m)',
+        stolen: '✅ Đã chiếm khu vực!',
+        capturedZone: '✅ Đã chiếm khu vực!',
+        alreadyYours: '❌ Đây là khu vực của bạn!',
+        protectedZone: '🛡️ Khu vực được bảo vệ! Đợi 24 giờ.',
+        yourZone: 'Bạn',
+        otherPlayer: 'Người chơi khác',
+        perimeter: 'Chu vi',
+        sector: 'Khu vực',
+        owner: 'Chủ sở hữu',
+        noZones: 'Đường chạy không chiếm được khu vực nào'
+      }
+    };
+
+    let currentLang = 'ru';
+
+    function t(key) {
+      return LANG[currentLang][key] || key;
+    }
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      document.querySelectorAll('.lang-btn-small').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === lang);
+      });
+      updateAllTexts();
+      drawZones();
+      updateLeaderboard();
+    }
+
+    function updateAllTexts() {
+      document.getElementById('statsTitle').textContent = t('stats');
+      document.getElementById('lbTitle').textContent = t('leaderboard');
+      if (!isRunning) {
+        actionBtn.textContent = t('start');
+      } else {
+        actionBtn.textContent = t('stop');
+      }
+      updateUI();
+    }
+
     // ============================================================
     // КОНСТАНТЫ
     // ============================================================
@@ -238,56 +385,45 @@
     }
 
     // ============================================================
-    // ПРОВЕРКА СКОРОСТИ (УМНАЯ)
+    // ПРОВЕРКА СКОРОСТИ
     // ============================================================
     function checkSpeed(points) {
       if (points.length < 5) return false;
-
       const speeds = [];
-      
       for (let i = 0; i < points.length - SEGMENT_SIZE; i += SEGMENT_SIZE) {
         const segment = points.slice(i, i + SEGMENT_SIZE);
         if (segment.length < 2) continue;
-        
         let dist = 0;
         for (let j = 1; j < segment.length; j++) {
           dist += map.distance(segment[j-1], segment[j]);
         }
-        
         const hours = (segment.length - 1) * 2 / 3600;
         if (hours === 0) continue;
         const speed = dist / 1000 / hours;
-        
         if (speed > 2 && speed < 30) {
           speeds.push(speed);
         }
       }
-      
       if (speeds.length === 0) return false;
-      
       speeds.sort((a, b) => a - b);
       const median = speeds[Math.floor(speeds.length / 2)];
-      
       return median >= SPEED_MIN && median <= SPEED_MAX;
     }
 
     // ============================================================
-    // ПРОВЕРКА ОТБОРА (С БУФЕРНОЙ ЗОНОЙ)
+    // ПРОВЕРКА ОТБОРА
     // ============================================================
     function checkSteal(zone, points) {
       if (zone.owner === 'me') return false;
       if (!zone.capturedAt) return false;
       if (isProtected(zone)) return false;
       if (points.length < 5) return false;
-
       if (!checkSpeed(points)) {
-        alert('❌ Скорость не соответствует бегу!');
+        alert(t('speedError'));
         return false;
       }
-
       const perimeter = calcPerimeter(zone.coords);
       if (perimeter === 0) return false;
-
       let covered = 0;
       for (let i = 0; i < points.length; i++) {
         const p = points[i];
@@ -300,7 +436,6 @@
           covered++;
         }
       }
-
       const coverage = covered / points.length;
       return coverage >= STEAL_THRESHOLD;
     }
@@ -763,10 +898,44 @@
     ];
 
     // ============================================================
+    // КАРТА
+    // ============================================================
+    const map = L.map('map', {
+      center: [12.220, 109.200],
+      zoom: 13,
+      zoomControl: true
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // ============================================================
     // СОСТОЯНИЕ
     // ============================================================
     let highlightedZone = null;
+    let capturedZones = new Set();
+    let isRunning = false;
+    let route = [];
+    let watchId = null;
+    let polyline = null;
+    let zoneLayers = [];
+    let labelLayers = [];
+    let leaderboardVisible = true;
 
+    const zoneCountSpan = document.getElementById('zoneCount');
+    const capturedCountSpan = document.getElementById('capturedCount');
+    const totalPointsSpan = document.getElementById('totalPoints');
+    const statsContent = document.getElementById('statsContent');
+    const actionBtn = document.getElementById('actionBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const lbContent = document.getElementById('lbContent');
+    const leaderboardToggle = document.getElementById('leaderboardToggle');
+    const leaderboardEl = document.getElementById('leaderboard');
+
+    // ============================================================
+    // ЗАГРУЗКА/СОХРАНЕНИЕ
+    // ============================================================
     function loadState() {
       try {
         const saved = localStorage.getItem('runningGameState');
@@ -795,51 +964,10 @@
     }
 
     // ============================================================
-    // КАРТА
-    // ============================================================
-    const map = L.map('map', {
-      center: [12.220, 109.200],
-      zoom: 13,
-      zoomControl: true
-    });
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap'
-    }).addTo(map);
-
-    // ============================================================
-    // СОСТОЯНИЕ
-    // ============================================================
-    let capturedZones = new Set();
-    let isRunning = false;
-    let route = [];
-    let watchId = null;
-    let polyline = null;
-    let zoneLayers = [];
-    let labelLayers = [];
-    let leaderboardVisible = true;
-
-    const zoneCountSpan = document.getElementById('zoneCount');
-    const capturedCountSpan = document.getElementById('capturedCount');
-    const totalPointsSpan = document.getElementById('totalPoints');
-    const statsContent = document.getElementById('statsContent');
-    const actionBtn = document.getElementById('actionBtn');
-    const resetBtn = document.getElementById('resetBtn');
-    const lbContent = document.getElementById('lbContent');
-    const leaderboardToggle = document.getElementById('leaderboardToggle');
-    const leaderboardEl = document.getElementById('leaderboard');
-
-    leaderboardToggle.addEventListener('click', () => {
-      leaderboardVisible = !leaderboardVisible;
-      leaderboardEl.style.display = leaderboardVisible ? 'block' : 'none';
-    });
-
-    // ============================================================
     // ТУРНИРНАЯ ТАБЛИЦА
     // ============================================================
     function updateLeaderboard() {
       const players = {};
-      
       zonesData.forEach(z => {
         if (z.owner && z.capturedAt) {
           const owner = z.owner;
@@ -850,27 +978,23 @@
           players[owner].points += getPoints(z);
         }
       });
-
       const me = 'me';
       const myZones = zonesData.filter(z => z.owner === 'me' && z.capturedAt);
       if (!players[me] && myZones.length > 0) {
-        players[me] = { name: 'Ты', zones: 0, points: 0 };
+        players[me] = { name: t('yourZone'), zones: 0, points: 0 };
       }
       if (players[me]) {
         players[me].zones = myZones.length;
         players[me].points = myZones.reduce((sum, z) => sum + getPoints(z), 0);
-        players[me].name = 'Ты';
+        players[me].name = t('yourZone');
       }
-
       const sorted = Object.values(players)
         .filter(p => p.zones > 0 || p.points > 0)
         .sort((a, b) => b.points - a.points || b.zones - a.zones);
-
       if (sorted.length === 0) {
-        lbContent.innerHTML = '<div class="empty">Нет игроков</div>';
+        lbContent.innerHTML = `<div class="empty">${t('noPlayers')}</div>`;
         return;
       }
-
       let html = '';
       sorted.forEach((p, i) => {
         const pos = i + 1;
@@ -878,8 +1002,7 @@
         if (pos === 1) posClass += ' top1';
         else if (pos === 2) posClass += ' top2';
         else if (pos === 3) posClass += ' top3';
-        
-        const isMe = p.name === 'Ты';
+        const isMe = p.name === t('yourZone');
         html += `
           <div class="lb-item ${isMe ? 'me' : ''}">
             <span><span class="${posClass}">#${pos}</span><span class="name">${p.name}</span></span>
@@ -887,7 +1010,6 @@
           </div>
         `;
       });
-
       lbContent.innerHTML = html;
     }
 
@@ -951,14 +1073,25 @@
           className: isHighlighted ? 'highlighted-zone' : ''
         });
 
+        let statusText = '';
+        if (!isCaptured) {
+          statusText = t('free');
+        } else if (isMine && protected_) {
+          statusText = t('protected');
+        } else if (isMine && !protected_) {
+          statusText = t('vulnerable');
+        } else {
+          statusText = t('other');
+        }
+
         polygon.bindPopup(`
-          <b>🏛️ Зона ${zone.id}</b><br>
+          <b>🏛️ ${t('zones')} ${zone.id}</b><br>
           ${zone.name}<br>
-          📍 ${zone.sector}<br>
-          📏 Периметр: ${perimeter} м<br>
-          ${isCaptured ? `👤 Владелец: ${isMine ? 'Ты' : 'Другой игрок'}` : '⬜ Свободна'}<br>
-          ${isCaptured ? `🛡️ ${protected_ ? '✅ Защищена' : '⚠️ Уязвима'}` : ''}<br>
-          ${isCaptured && isMine ? `⭐ Очков: ${points}` : ''}
+          📍 ${t('sector')}: ${zone.sector}<br>
+          📏 ${t('perimeter')}: ${perimeter} м<br>
+          ${isCaptured ? `👤 ${t('owner')}: ${isMine ? t('yourZone') : t('otherPlayer')}` : t('free')}<br>
+          ${isCaptured ? `🛡️ ${statusText}` : ''}<br>
+          ${isCaptured && isMine ? `⭐ ${t('points')}: ${points}` : ''}
           ${!isCaptured ? '🏃 Нажми СТАРТ, чтобы захватить!' : ''}
         `);
 
@@ -969,27 +1102,25 @@
             highlightedZone = zone.id;
           }
           drawZones();
-
           let statusText = '';
           if (!isCaptured) {
-            statusText = '⬜ Свободна';
+            statusText = t('free');
           } else if (isMine && protected_) {
-            statusText = '🛡️ Защищена';
+            statusText = t('protected');
           } else if (isMine && !protected_) {
-            statusText = '⚠️ Уязвима';
+            statusText = t('vulnerable');
           } else {
-            statusText = '👤 Занята другим игроком';
+            statusText = t('other');
           }
-
           statsContent.innerHTML = `
-            <div class="stat-item">🏛️ Зона ${zone.id}</div>
+            <div class="stat-item">🏛️ ${t('zones')} ${zone.id}</div>
             <div class="stat-item">📍 ${zone.name}</div>
-            <div class="stat-item">📐 Сектор: ${zone.sector}</div>
-            <div class="stat-item">📏 Периметр: ${perimeter} м</div>
+            <div class="stat-item">📐 ${t('sector')}: ${zone.sector}</div>
+            <div class="stat-item">📏 ${t('perimeter')}: ${perimeter} м</div>
             <div class="stat-item" style="border-bottom:none;color:${isCaptured ? (isMine ? (protected_ ? '#2ecc71' : '#f1c40f') : '#e74c3c') : '#888'};">
               ${statusText}
             </div>
-            ${isCaptured && isMine ? `<div class="stat-item" style="border-bottom:none;color:#f1c40f;">⭐ Очков: ${points}</div>` : ''}
+            ${isCaptured && isMine ? `<div class="stat-item" style="border-bottom:none;color:#f1c40f;">⭐ ${t('points')}: ${points}</div>` : ''}
           `;
         });
 
@@ -1028,6 +1159,21 @@
     }
 
     // ============================================================
+    // ОБНОВЛЕНИЕ UI
+    // ============================================================
+    function updateUI() {
+      const total = zonesData.length;
+      const captured = zonesData.filter(z => z.owner === 'me').length;
+      const totalPoints = zonesData
+        .filter(z => z.owner === 'me')
+        .reduce((sum, z) => sum + getPoints(z), 0);
+
+      zoneCountSpan.textContent = `🏛️ ${t('zones')}: ${captured}/${total}`;
+      capturedCountSpan.textContent = `✅ ${t('captured')}: ${captured}`;
+      totalPointsSpan.textContent = `⭐ ${t('points')}: ${totalPoints}`;
+    }
+
+    // ============================================================
     // ЗАХВАТ ЗОНЫ
     // ============================================================
     function captureZone(zoneId) {
@@ -1036,23 +1182,24 @@
 
       if (zone.capturedAt) {
         if (zone.owner === 'me') {
-          alert('❌ Это твоя зона!');
+          alert(t('alreadyYours'));
           return;
         }
         if (isProtected(zone)) {
-          alert('🛡️ Зона защищена! Подожди 24 часа.');
+          alert(t('protectedZone'));
           return;
         }
         if (route.length < 5) {
-          alert('❌ Слишком короткий маршрут для отбора');
+          alert(t('tooShort'));
           return;
         }
         if (!checkSteal(zone, route)) {
+          alert(t('needMorePoints'));
           return;
         }
-        alert(`✅ Зона ${zone.id} отобрана!`);
+        alert(t('stolen'));
       } else {
-        alert(`✅ Зона ${zone.id} захвачена!`);
+        alert(t('capturedZone'));
       }
 
       zone.capturedAt = Date.now();
@@ -1065,27 +1212,12 @@
     }
 
     // ============================================================
-    // ОБНОВЛЕНИЕ UI
-    // ============================================================
-    function updateUI() {
-      const total = zonesData.length;
-      const captured = zonesData.filter(z => z.owner === 'me').length;
-      const totalPoints = zonesData
-        .filter(z => z.owner === 'me')
-        .reduce((sum, z) => sum + getPoints(z), 0);
-
-      zoneCountSpan.textContent = `🏛️ Зон: ${captured}/${total}`;
-      capturedCountSpan.textContent = `✅ Захвачено: ${captured}`;
-      totalPointsSpan.textContent = `⭐ Очков: ${totalPoints}`;
-    }
-
-    // ============================================================
     // БЕГ
     // ============================================================
     function startRun() {
       route = [];
       isRunning = true;
-      actionBtn.textContent = '⏹ СТОП';
+      actionBtn.textContent = t('stop');
       actionBtn.className = 'stop-btn';
       if (polyline) { map.removeLayer(polyline); polyline = null; }
 
@@ -1115,11 +1247,11 @@
     function stopRun() {
       if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
       isRunning = false;
-      actionBtn.textContent = '🏃 СТАРТ';
+      actionBtn.textContent = t('start');
       actionBtn.className = '';
 
       if (route.length < 5) {
-        alert('❌ Слишком короткий маршрут');
+        alert(t('tooShort'));
         return;
       }
 
@@ -1140,12 +1272,11 @@
           }
         }
         if (!captured) {
-          alert('❌ Маршрут не захватил ни одной зоны');
+          alert(t('noZones'));
         }
       } else {
-        alert('❌ Маршрут не замкнут! Вернись в старт (< 50 м)');
+        alert(t('notClosed'));
       }
-
       updateUI();
     }
 
@@ -1166,10 +1297,10 @@
       if (isRunning) {
         if (watchId) navigator.geolocation.clearWatch(watchId);
         isRunning = false;
-        actionBtn.textContent = '🏃 СТАРТ';
+        actionBtn.textContent = t('start');
         actionBtn.className = '';
       }
-      if (confirm('Сбросить все зоны?')) {
+      if (confirm(t('reset'))) {
         zonesData.forEach(z => {
           z.capturedAt = null;
           z.owner = null;
@@ -1181,15 +1312,24 @@
         saveState();
         drawZones();
         updateUI();
-        statsContent.innerHTML = '⬜ Кликни на зону';
+        statsContent.innerHTML = `⬜ ${t('clickZone')}`;
       }
     }
 
     // ============================================================
-    // КНОПКИ
+    // ПЕРЕКЛЮЧЕНИЕ ТАБЛИЦЫ
     // ============================================================
-    actionBtn.addEventListener('click', () => isRunning ? stopRun() : startRun());
-    resetBtn.addEventListener('click', resetGame);
+    leaderboardToggle.addEventListener('click', () => {
+      leaderboardVisible = !leaderboardVisible;
+      leaderboardEl.style.display = leaderboardVisible ? 'block' : 'none';
+    });
+
+    // ============================================================
+    // ЯЗЫКОВЫЕ КНОПКИ
+    // ============================================================
+    document.getElementById('langRu').addEventListener('click', () => setLanguage('ru'));
+    document.getElementById('langEn').addEventListener('click', () => setLanguage('en'));
+    document.getElementById('langVi').addEventListener('click', () => setLanguage('vi'));
 
     // ============================================================
     // ГЕОЛОКАЦИЯ
@@ -1208,11 +1348,18 @@
     }
 
     // ============================================================
+    // КНОПКИ
+    // ============================================================
+    actionBtn.addEventListener('click', () => isRunning ? stopRun() : startRun());
+    resetBtn.addEventListener('click', resetGame);
+
+    // ============================================================
     // ЗАПУСК
     // ============================================================
     loadState();
     drawZones();
-    console.log('🏃 22 зоны — Север (10) + Центр (8) + Юг (4)');
+    updateAllTexts();
+    console.log('🏃 22 зоны — с поддержкой языков');
   </script>
 </body>
 </html>
