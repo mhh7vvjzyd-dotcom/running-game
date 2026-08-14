@@ -324,12 +324,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     // ============================================================
-    // SUPABASE НАСТРОЙКИ
-    // ============================================================
-    const SUPABASE_URL = 'https://onmcvmozceyatcmxmnnb.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ubWN2bW96Y2V5YXRjbXhtbm5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2OTg0NTksImV4cCI6MjEwMjI3NDQ1OX0.WswNX824baDjb05JAm8EJhmpIvmztsaqLyP3x4kevOo';
-
-    // ============================================================
     // ПЕРЕВОДЫ
     // ============================================================
     const LANG = {
@@ -425,93 +419,53 @@
     document.getElementById('langVi').addEventListener('click', () => setLanguage('vi'));
 
     // ============================================================
-    // SUPABASE КЛИЕНТ
+    // ЛОКАЛЬНОЕ ХРАНИЛИЩЕ (полная автоматизация)
     // ============================================================
-    const supabase = {
-      url: SUPABASE_URL,
-      key: SUPABASE_ANON_KEY,
-      async query(endpoint, options = {}) {
-        const res = await fetch(`${this.url}/rest/v1/${endpoint}`, {
-          ...options,
-          headers: {
-            'apikey': this.key,
-            'Authorization': `Bearer ${this.key}`,
-            'Content-Type': 'application/json',
-            ...(options.headers || {})
-          }
+    const playersDB = JSON.parse(localStorage.getItem('playersDB') || '{}');
+    const capturesDB = JSON.parse(localStorage.getItem('capturesDB') || '{}');
+
+    function savePlayersDB() {
+      localStorage.setItem('playersDB', JSON.stringify(playersDB));
+    }
+
+    function saveCapturesDB() {
+      localStorage.setItem('capturesDB', JSON.stringify(capturesDB));
+    }
+
+    function registerPlayerLocal(username, color) {
+      if (playersDB[username]) {
+        return { id: playersDB[username].id, color: playersDB[username].color };
+      }
+      const id = 'player_' + Date.now();
+      playersDB[username] = { id, username, color };
+      savePlayersDB();
+      return { id, color };
+    }
+
+    function saveCaptureLocal(playerId, zoneId) {
+      if (!capturesDB[zoneId]) {
+        capturesDB[zoneId] = [];
+      }
+      capturesDB[zoneId].push({ playerId, zoneId, capturedAt: Date.now() });
+      saveCapturesDB();
+    }
+
+    function getCapturesLocal() {
+      const result = [];
+      for (const zoneId in capturesDB) {
+        capturesDB[zoneId].forEach(c => {
+          result.push({ player_id: c.playerId, zone_id: zoneId, points: 1, captured_at: c.capturedAt });
         });
-        return res.json();
-      },
-      async post(table, data) {
-        return this.query(table, {
-          method: 'POST',
-          body: JSON.stringify(data),
-          headers: { 'Prefer': 'return=representation' }
-        });
       }
-    };
-
-    // ============================================================
-    // УПРАВЛЕНИЕ ИГРОКОМ
-    // ============================================================
-    async function registerPlayer(username, color) {
-      try {
-        const result = await supabase.post('players', { username, color });
-        if (result && result.length > 0) {
-          return result[0];
-        }
-        return null;
-      } catch (e) {
-        console.error('Ошибка регистрации:', e);
-        return null;
-      }
+      return result;
     }
 
-    async function getPlayerId(username) {
-      try {
-        const players = await supabase.query(`players?username=eq.${username}&select=id,color`);
-        if (players && players.length > 0) {
-          return players[0];
-        }
-        return null;
-      } catch (e) {
-        console.error('Ошибка поиска игрока:', e);
-        return null;
+    function getPlayersLocal() {
+      const result = [];
+      for (const username in playersDB) {
+        result.push({ id: playersDB[username].id, username, color: playersDB[username].color });
       }
-    }
-
-    async function saveCapture(playerId, zoneId) {
-      try {
-        const result = await supabase.post('captures', {
-          player_id: playerId,
-          zone_id: zoneId,
-          points: 1
-        });
-        return result;
-      } catch (e) {
-        console.error('Ошибка сохранения захвата:', e);
-        return null;
-      }
-    }
-
-    async function getCaptures() {
-      try {
-        const result = await supabase.query('captures?select=player_id,zone_id,points');
-        return result || [];
-      } catch (e) {
-        console.error('Ошибка загрузки захватов:', e);
-        return [];
-      }
-    }
-
-    async function getPlayers() {
-      try {
-        const result = await supabase.query('players?select=id,username,color');
-        return result || [];
-      } catch (e) {
-        console.error('Ошибка загрузки игроков:', e);
-        return [];
-      }
+      return result;
     }
 
     // ============================================================
@@ -544,7 +498,7 @@
       modal.style.display = 'none';
     }
 
-    saveBtn.addEventListener('click', async () => {
+    saveBtn.addEventListener('click', () => {
       const name = usernameInput.value.trim();
       if (name.length < 2) {
         nameError.style.display = 'block';
@@ -552,30 +506,20 @@
       }
       nameError.style.display = 'none';
       
-      let player = await getPlayerId(name);
-      if (!player) {
-        const newPlayer = await registerPlayer(name, selectedColor);
-        if (newPlayer) {
-          player = newPlayer;
-        }
-      }
+      // АВТОМАТИЧЕСКАЯ РЕГИСТРАЦИЯ
+      const player = registerPlayerLocal(name, selectedColor);
+      playerId = player.id;
+      playerColor = selectedColor;
+      currentPlayer = name;
       
-      if (player) {
-        playerId = player.id;
-        playerColor = player.color || selectedColor;
-        currentPlayer = name;
-        localStorage.setItem('playerName', name);
-        localStorage.setItem('playerId', player.id);
-        localStorage.setItem('playerColor', playerColor);
-        document.getElementById('playerDisplay').textContent = `👤 ${name}`;
-        hideModal();
-        await loadGameData();
-        drawZones();
-        updateLeaderboard();
-      } else {
-        nameError.textContent = '⚠️ Ошибка регистрации. Попробуй ещё раз.';
-        nameError.style.display = 'block';
-      }
+      localStorage.setItem('playerName', name);
+      localStorage.setItem('playerId', playerId);
+      localStorage.setItem('playerColor', playerColor);
+      document.getElementById('playerDisplay').textContent = `👤 ${name}`;
+      hideModal();
+      loadGameDataLocal();
+      drawZones();
+      updateLeaderboard();
     });
 
     usernameInput.addEventListener('keydown', (e) => {
@@ -585,26 +529,22 @@
     // ============================================================
     // ЗАГРУЗКА ДАННЫХ
     // ============================================================
-    async function loadGameData() {
-      try {
-        const captures = await getCaptures();
-        const players = await getPlayers();
-        const playerMap = {};
-        players.forEach(p => {
-          playerMap[p.id] = { username: p.username, color: p.color };
-        });
-        captures.forEach(c => {
-          const zone = zonesData.find(z => z.id === c.zone_id);
-          if (zone) {
-            zone.owner = c.player_id === playerId ? 'me' : c.player_id;
-            zone.ownerColor = playerMap[c.player_id]?.color || '#e74c3c';
-            zone.capturedAt = c.captured_at || Date.now();
-          }
-        });
-        console.log('✅ Данные загружены:', captures.length, 'захватов');
-      } catch (e) {
-        console.warn('⚠️ Ошибка загрузки данных:', e);
-      }
+    function loadGameDataLocal() {
+      const captures = getCapturesLocal();
+      const players = getPlayersLocal();
+      const playerMap = {};
+      players.forEach(p => {
+        playerMap[p.id] = { username: p.username, color: p.color };
+      });
+      captures.forEach(c => {
+        const zone = zonesData.find(z => z.id === c.zone_id);
+        if (zone) {
+          zone.owner = c.player_id === playerId ? 'me' : c.player_id;
+          zone.ownerColor = playerMap[c.player_id]?.color || '#e74c3c';
+          zone.capturedAt = c.captured_at || Date.now();
+        }
+      });
+      console.log('✅ Данные загружены:', captures.length, 'захватов');
     }
 
     // ============================================================
@@ -618,7 +558,7 @@
     const SEGMENT_SIZE = 10;
 
     // ============================================================
-    // 22 ЗОНЫ
+    // 22 ЗОНЫ (полный список)
     // ============================================================
     const zonesData = [
       { id: '01', name: 'Vĩnh Hải', sector: 'Север', coords: [[12.2959054,109.2216405],[12.2951267,109.2177517],[12.2923235,109.2125609],[12.2921000,109.2110000],[12.2924772,109.2094382],[12.2941344,109.2126608],[12.2956220,109.2136707],[12.2972075,109.2161775],[12.2974191,109.2184759]] },
@@ -684,68 +624,63 @@
     // ============================================================
     // ТУРНИРНАЯ ТАБЛИЦА
     // ============================================================
-    async function updateLeaderboard() {
-      try {
-        const players = await getPlayers();
-        const captures = await getCaptures();
-        
-        const scoreMap = {};
-        captures.forEach(c => {
-          if (!scoreMap[c.player_id]) {
-            scoreMap[c.player_id] = { points: 0, zones: 0 };
-          }
-          scoreMap[c.player_id].points += c.points || 1;
-          scoreMap[c.player_id].zones += 1;
-        });
-
-        const playerMap = {};
-        players.forEach(p => {
-          playerMap[p.id] = { username: p.username, color: p.color || '#555' };
-        });
-
-        const sorted = Object.keys(scoreMap)
-          .map(id => ({
-            id,
-            name: playerMap[id]?.username || 'Неизвестный',
-            color: playerMap[id]?.color || '#555',
-            points: scoreMap[id].points,
-            zones: scoreMap[id].zones
-          }))
-          .sort((a, b) => b.points - a.points || b.zones - a.zones);
-
-        if (sorted.length === 0) {
-          lbContent.innerHTML = `<div class="empty">${t('noPlayers')}</div>`;
-          return;
+    function updateLeaderboard() {
+      const players = getPlayersLocal();
+      const captures = getCapturesLocal();
+      
+      const scoreMap = {};
+      captures.forEach(c => {
+        if (!scoreMap[c.player_id]) {
+          scoreMap[c.player_id] = { points: 0, zones: 0 };
         }
+        scoreMap[c.player_id].points += c.points || 1;
+        scoreMap[c.player_id].zones += 1;
+      });
 
-        let html = '';
-        sorted.forEach((p, i) => {
-          const pos = i + 1;
-          let posClass = 'lb-pos';
-          if (pos === 1) posClass += ' top1';
-          else if (pos === 2) posClass += ' top2';
-          else if (pos === 3) posClass += ' top3';
-          const isMe = p.id === playerId;
-          html += `
-            <div class="lb-item ${isMe ? 'me' : ''}">
-              <span>
-                <span class="${posClass}">#${pos}</span>
-                <span class="color-dot" style="background:${p.color}"></span>
-                <span class="name">${p.name}</span>
-              </span>
-              <span class="score">${p.points}⭐ (${p.zones}з)</span>
-            </div>
-          `;
-        });
-        lbContent.innerHTML = html;
-      } catch (e) {
-        console.warn('Ошибка обновления таблицы:', e);
-        lbContent.innerHTML = `<div class="empty">⚠️ Ошибка загрузки</div>`;
+      const playerMap = {};
+      players.forEach(p => {
+        playerMap[p.id] = { username: p.username, color: p.color || '#555' };
+      });
+
+      const sorted = Object.keys(scoreMap)
+        .map(id => ({
+          id,
+          name: playerMap[id]?.username || 'Неизвестный',
+          color: playerMap[id]?.color || '#555',
+          points: scoreMap[id].points,
+          zones: scoreMap[id].zones
+        }))
+        .sort((a, b) => b.points - a.points || b.zones - a.zones);
+
+      if (sorted.length === 0) {
+        lbContent.innerHTML = `<div class="empty">${t('noPlayers')}</div>`;
+        return;
       }
+
+      let html = '';
+      sorted.forEach((p, i) => {
+        const pos = i + 1;
+        let posClass = 'lb-pos';
+        if (pos === 1) posClass += ' top1';
+        else if (pos === 2) posClass += ' top2';
+        else if (pos === 3) posClass += ' top3';
+        const isMe = p.id === playerId;
+        html += `
+          <div class="lb-item ${isMe ? 'me' : ''}">
+            <span>
+              <span class="${posClass}">#${pos}</span>
+              <span class="color-dot" style="background:${p.color}"></span>
+              <span class="name">${p.name}</span>
+            </span>
+            <span class="score">${p.points}⭐ (${p.zones}з)</span>
+          </div>
+        `;
+      });
+      lbContent.innerHTML = html;
     }
 
     // ============================================================
-    // РИСОВАНИЕ ЗОН (исправлено — цвет игрока)
+    // РИСОВАНИЕ ЗОН
     // ============================================================
     function drawZones() {
       zoneLayers.forEach(l => map.removeLayer(l));
@@ -990,7 +925,7 @@
     }
 
     // ============================================================
-    // ЗАХВАТ ЗОНЫ (исправлено — сохраняем цвет)
+    // ЗАХВАТ ЗОНЫ
     // ============================================================
     async function captureZone(zoneId) {
       const zone = zonesData.find(z => z.id === zoneId);
@@ -1023,10 +958,8 @@
       zone.ownerColor = playerColor;
       capturedZones.add(zone.id);
 
-      if (playerId) {
-        await saveCapture(playerId, zoneId);
-        await updateLeaderboard();
-      }
+      saveCaptureLocal(playerId, zoneId);
+      updateLeaderboard();
 
       saveState();
       highlightedZone = zone.id;
@@ -1226,24 +1159,22 @@
       currentPlayer = savedPlayer;
       if (savedColor) playerColor = savedColor;
       document.getElementById('playerDisplay').textContent = `👤 ${savedPlayer}`;
-      getPlayerId(savedPlayer).then(player => {
-        if (player) {
-          playerId = player.id;
-          if (player.color) {
-            playerColor = player.color;
-            localStorage.setItem('playerColor', playerColor);
-          }
-          loadGameData().then(() => {
-            drawZones();
-            updateLeaderboard();
-          });
+      const player = playersDB[savedPlayer];
+      if (player) {
+        playerId = player.id;
+        if (player.color) {
+          playerColor = player.color;
+          localStorage.setItem('playerColor', playerColor);
         }
-      });
+        loadGameDataLocal();
+        drawZones();
+        updateLeaderboard();
+      }
     } else {
       showModal();
     }
 
-    console.log('🏃 Игра с выбором цвета запущена!');
+    console.log('🏃 Игра полностью автоматизирована!');
   </script>
 </body>
 </html>
