@@ -1076,7 +1076,61 @@
       capturedCountSpan.textContent = `✅ ${t('captured')}: ${captured}`;
       totalPointsSpan.textContent = `⭐ ${t('points')}: ${totalPoints}`;
     }
+// ============================================================
+    // ОТОБРАЖЕНИЕ ПРОГРЕССА ЗАХВАТА (В РЕАЛЬНОМ ВРЕМЕНИ)
+    // ============================================================
+    function updateCaptureProgress() {
+      if (!isRunning || route.length < 2) {
+        document.getElementById('capture-progress').style.display = 'none';
+        return;
+      }
 
+      let bestZone = null;
+      let bestCoverage = 0;
+
+      for (const zone of zonesData) {
+        if (zone.owner === 'me') continue;
+
+        const perimeter = zone.coords;
+        let pointsOnPerimeter = 0;
+        const DISTANCE_THRESHOLD = 5;
+
+        for (let i = 0; i < route.length; i++) {
+          const p = route[i];
+          let minDist = Infinity;
+          for (let j = 0; j < perimeter.length; j++) {
+            const d = map.distance(p, perimeter[j]);
+            if (d < minDist) minDist = d;
+          }
+          if (minDist < DISTANCE_THRESHOLD) {
+            pointsOnPerimeter++;
+          }
+        }
+
+        const coverage = pointsOnPerimeter / route.length;
+        if (coverage > bestCoverage) {
+          bestCoverage = coverage;
+          bestZone = zone;
+        }
+      }
+
+      if (bestZone && bestCoverage > 0.05) {
+        const progress = Math.min(bestCoverage * 100, 100);
+        const percent = Math.round(progress);
+        const isComplete = progress >= 80;
+
+        document.getElementById('capture-progress').style.display = 'block';
+        document.getElementById('progress-zone-name').textContent = `🏛️ ${bestZone.name} (${bestZone.id})`;
+        document.getElementById('progress-percent').textContent = `${percent}%`;
+        document.getElementById('progress-bar').style.width = `${Math.min(progress, 100)}%`;
+        document.getElementById('progress-bar').style.background = isComplete 
+          ? 'linear-gradient(90deg, #2ecc71, #27ae60)' 
+          : 'linear-gradient(90deg, #e74c3c, #f1c40f, #2ecc71)';
+        document.getElementById('progress-percent').style.color = isComplete ? '#2ecc71' : '#f1c40f';
+      } else {
+        document.getElementById('capture-progress').style.display = 'none';
+      }
+    }
     function startRun() {
       route = [];
       isRunning = true;
