@@ -747,6 +747,7 @@
           await loadGameData();
           drawZones();
           updateLeaderboard();
+          startOnlineTracking();
         } else {
           nameError.textContent = '⚠️ Ошибка регистрации. Попробуй ещё раз.';
           nameError.style.display = 'block';
