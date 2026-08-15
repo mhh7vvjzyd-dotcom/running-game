@@ -1945,29 +1945,83 @@
 
     function startOnlineTracking() {
       console.log('🚀 startOnlineTracking вызвана!');
+      
+      // ПОКАЗЫВАЕМ СООБЩЕНИЕ НА ЭКРАНЕ
+      const debugDiv = document.createElement('div');
+      debugDiv.id = 'debug-status';
+      debugDiv.style.cssText = `
+        position: fixed;
+        bottom: 240px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.8);
+        color: #2ecc71;
+        padding: 8px 16px;
+        border-radius: 8px;
+        z-index: 9999;
+        font-size: 12px;
+        font-family: monospace;
+        text-align: center;
+        border: 1px solid rgba(255,255,255,0.1);
+        display: none;
+      `;
+      document.body.appendChild(debugDiv);
+      
+      function setDebugText(text, color = '#2ecc71') {
+        const el = document.getElementById('debug-status');
+        if (el) {
+          el.style.display = 'block';
+          el.textContent = text;
+          el.style.color = color;
+        }
+      }
+      
+      setDebugText('🔄 Запуск отслеживания...', '#f1c40f');
+
       if (onlineTrackingInterval) clearInterval(onlineTrackingInterval);
       if (onlineLoadInterval) clearInterval(onlineLoadInterval);
       
+      // ПЕРВАЯ ОТПРАВКА СРАЗУ
+      if (navigator.geolocation && playerId) {
+        setDebugText('📡 Запрос геолокации...', '#f1c40f');
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            setDebugText(`📍 Координаты: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`, '#2ecc71');
+            updateOnlineStatus(pos.coords.latitude, pos.coords.longitude);
+          },
+          (err) => {
+            setDebugText(`❌ Ошибка: ${err.message}`, '#e74c3c');
+            console.error('❌ Ошибка геолокации:', err);
+          },
+          { enableHighAccuracy: true, timeout: 10000 }
+        );
+      } else {
+        setDebugText('❌ Геолокация или playerId отсутствуют', '#e74c3c');
+      }
+      
+      // ИНТЕРВАЛ
       onlineTrackingInterval = setInterval(() => {
-        console.log('⏳ Интервал отправки координат...');
         if (navigator.geolocation && playerId) {
+          setDebugText('📡 Обновление...', '#f1c40f');
           navigator.geolocation.getCurrentPosition(
             pos => {
-              console.log('📡 Получены координаты:', pos.coords.latitude, pos.coords.longitude);
+              setDebugText(`📍 Обновлено: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`, '#2ecc71');
               updateOnlineStatus(pos.coords.latitude, pos.coords.longitude);
             },
             (err) => {
+              setDebugText(`❌ Ошибка: ${err.message}`, '#e74c3c');
               console.error('❌ Ошибка геолокации:', err);
             },
-            { enableHighAccuracy: true, maximumAge: 5000 }
+            { enableHighAccuracy: true, timeout: 10000 }
           );
         } else {
-          console.log('❌ Геолокация или playerId отсутствуют');
+          setDebugText('❌ Нет доступа к геолокации', '#e74c3c');
         }
       }, 5000);
       
       onlineLoadInterval = setInterval(loadOnlinePlayers, 5000);
       loadOnlinePlayers();
+      setDebugText('✅ Отслеживание запущено!', '#2ecc71');
       console.log('✅ startOnlineTracking запущена!');
     }
 
