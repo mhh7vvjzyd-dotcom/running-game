@@ -116,40 +116,7 @@
     .highlighted-zone {
       filter: drop-shadow(0 0 15px rgba(46, 204, 113, 0.8));
     }
-/* ЯРКИЕ ГРАНИЦЫ ЗОН */
-.zone-border {
-  vector-effect: non-scaling-stroke;
-}
 
-.zone-free-border {
-  stroke: #ffffff !important;
-  stroke-width: 3.5px !important;
-  stroke-opacity: 0.95 !important;
-  stroke-dasharray: 8 6 !important;
-}
-
-.zone-my-protected-border {
-  stroke: #2ecc71 !important;
-  stroke-width: 4.5px !important;
-  stroke-opacity: 1 !important;
-}
-
-.zone-my-vulnerable-border {
-  stroke: #f1c40f !important;
-  stroke-width: 5px !important;
-  stroke-opacity: 1 !important;
-}
-
-.zone-other-border {
-  stroke-width: 4.5px !important;
-  stroke-opacity: 1 !important;
-}
-
-.zone-selected-border {
-  stroke-width: 7px !important;
-  stroke-opacity: 1 !important;
-  filter: drop-shadow(0 0 6px rgba(255,255,255,0.9));
-}
     .leaderboard {
       position: fixed;
       left: 16px;
@@ -713,437 +680,139 @@
     }
 
     // ============================================================
-    // РИСОВАНИЕ ЗОН
+    // РИСОВАНИЕ ЗОН — СЕРЫЕ ГРАНИЦЫ
     // ============================================================
     function drawZones() {
-  zoneLayers.forEach(l => map.removeLayer(l));
-  labelLayers.forEach(l => map.removeLayer(l));
-
-  zoneLayers = [];
-  labelLayers = [];
-
-  zonesData.forEach((zone) => {
-
-    const isMine = zone.owner === 'me';
-    const isCaptured = !!zone.capturedAt;
-    const protected_ = isProtected(zone);
-    const perimeter = calcPerimeter(zone.coords);
-    const points = getPoints(zone);
-    const isHighlighted = highlightedZone === zone.id;
-
-    let borderColor;
-    let fillColor;
-    let fillOpacity;
-    let weight;
-    let dashArray = null;
-    let labelClass;
-
-    /*
-     * =========================================================
-     * СВОБОДНАЯ ЗОНА
-     * =========================================================
-     */
-    if (!isCaptured) {
-
-      borderColor = '#999999';
-      fillColor = '#666666';
-      fillOpacity = isHighlighted ? 0.16 : 0.07;
-
-      weight = isHighlighted ? 7 : 3.5;
-      dashArray = '8 6';
-
-      labelClass = 'free';
-
-    }
-
-    /*
-     * =========================================================
-     * МОЯ ЗОНА — ЗАЩИЩЕНА
-     * =========================================================
-     */
-    else if (isMine && protected_) {
-
-      borderColor = playerColor || '#2ecc71';
-      fillColor = playerColor || '#2ecc71';
-
-      fillOpacity = isHighlighted ? 0.38 : 0.20;
-
-      weight = isHighlighted ? 8 : 5;
-
-      labelClass = 'captured';
-
-    }
-
-    /*
-     * =========================================================
-     * МОЯ ЗОНА — УЯЗВИМА
-     * =========================================================
-     */
-    else if (isMine && !protected_) {
-
-      borderColor = '#f1c40f';
-      fillColor = '#f1c40f';
-
-      fillOpacity = isHighlighted ? 0.40 : 0.20;
-
-      weight = isHighlighted ? 8 : 5;
-
-      labelClass = 'vulnerable';
-
-    }
-
-    /*
-     * =========================================================
-     * ЧУЖАЯ ЗОНА
-     * =========================================================
-     */
-    else {
-
-      borderColor = zone.ownerColor || '#e74c3c';
-      fillColor = zone.ownerColor || '#e74c3c';
-
-      fillOpacity = isHighlighted ? 0.35 : 0.16;
-
-      weight = isHighlighted ? 8 : 4.5;
-
-      labelClass = 'other';
-    }
-
-
-    /*
-     * =========================================================
-     * ПОЛИГОН
-     * =========================================================
-     */
-
-    const polygon = L.polygon(zone.coords, {
-
-      color: borderColor,
-
-      weight: weight,
-
-      opacity: 1,
-
-      fillColor: fillColor,
-
-      fillOpacity: fillOpacity,
-
-      interactive: true,
-
-      smoothFactor: 0,
-
-      dashArray: dashArray,
-
-      lineJoin: 'round',
-
-      lineCap: 'round',
-
-      className: 'zone-border'
-
-    });
-
-
-    /*
-     * =========================================================
-     * ДОПОЛНИТЕЛЬНЫЕ CSS-КЛАССЫ
-     * =========================================================
-     */
-
-    if (!isCaptured) {
-      polygon.options.className =
-        'zone-border zone-free-border';
-    }
-
-    else if (isMine && protected_) {
-      polygon.options.className =
-        'zone-border zone-my-protected-border';
-    }
-
-    else if (isMine && !protected_) {
-      polygon.options.className =
-        'zone-border zone-my-vulnerable-border';
-    }
-
-    else {
-      polygon.options.className =
-        'zone-border zone-other-border';
-    }
-
-
-    if (isHighlighted) {
-      polygon.options.className +=
-        ' zone-selected-border';
-    }
-
-
-    /*
-     * =========================================================
-     * ТЕКСТ СТАТУСА
-     * =========================================================
-     */
-
-    let statusText = '';
-
-    if (!isCaptured) {
-      statusText = t('free');
-    }
-
-    else if (isMine && protected_) {
-      statusText = t('protected');
-    }
-
-    else if (isMine && !protected_) {
-      statusText = t('vulnerable');
-    }
-
-    else {
-      statusText = t('other');
-    }
-
-
-    /*
-     * =========================================================
-     * POPUP
-     * =========================================================
-     */
-
-    polygon.bindPopup(`
-      <div style="
-        min-width:180px;
-        font-family:-apple-system,Arial,sans-serif;
-        line-height:1.5;
-      ">
-
-        <b style="font-size:16px;">
-          🏛️ ${t('zones')} ${zone.id}
-        </b>
-
-        <br>
-
-        <b>${zone.name}</b>
-
-        <br><br>
-
-        📍 ${t('sector')}: ${zone.sector}
-
-        <br>
-
-        📏 ${t('perimeter')}: ${perimeter} м
-
-        <br><br>
-
-        <b>${statusText}</b>
-
-        ${
-          isCaptured
-            ? `<br>👤 ${t('owner')}: ${
-                isMine ? t('yourZone') : t('otherPlayer')
-              }`
-            : ''
+      zoneLayers.forEach(l => map.removeLayer(l));
+      labelLayers.forEach(l => map.removeLayer(l));
+      zoneLayers = [];
+      labelLayers = [];
+
+      zonesData.forEach((zone) => {
+        const isMine = zone.owner === 'me';
+        const isCaptured = !!zone.capturedAt;
+        const protected_ = isProtected(zone);
+        const perimeter = calcPerimeter(zone.coords);
+        const points = getPoints(zone);
+        const isHighlighted = highlightedZone === zone.id;
+
+        let borderColor, fillColor, fillOpacity, weight, dashArray = null, labelClass;
+
+        // СВОБОДНАЯ ЗОНА — СЕРЫЕ ГРАНИЦЫ
+        if (!isCaptured) {
+          borderColor = '#888888';
+          fillColor = '#666666';
+          fillOpacity = isHighlighted ? 0.16 : 0.07;
+          weight = isHighlighted ? 7 : 3.5;
+          dashArray = '8 6';
+          labelClass = 'free';
+        }
+        // МОЯ ЗОНА — ЗАЩИЩЕНА
+        else if (isMine && protected_) {
+          borderColor = playerColor || '#2ecc71';
+          fillColor = playerColor || '#2ecc71';
+          fillOpacity = isHighlighted ? 0.38 : 0.20;
+          weight = isHighlighted ? 8 : 5;
+          labelClass = 'captured';
+        }
+        // МОЯ ЗОНА — УЯЗВИМА
+        else if (isMine && !protected_) {
+          borderColor = '#f1c40f';
+          fillColor = '#f1c40f';
+          fillOpacity = isHighlighted ? 0.40 : 0.20;
+          weight = isHighlighted ? 8 : 5;
+          labelClass = 'vulnerable';
+        }
+        // ЧУЖАЯ ЗОНА
+        else {
+          borderColor = zone.ownerColor || '#e74c3c';
+          fillColor = zone.ownerColor || '#e74c3c';
+          fillOpacity = isHighlighted ? 0.35 : 0.16;
+          weight = isHighlighted ? 8 : 4.5;
+          labelClass = 'other';
         }
 
-        ${
-          isCaptured && isMine
-            ? `<br>⭐ ${t('points')}: ${points}`
-            : ''
-        }
+        const polygon = L.polygon(zone.coords, {
+          color: borderColor,
+          weight: weight,
+          opacity: 1,
+          fillColor: fillColor,
+          fillOpacity: fillOpacity,
+          interactive: true,
+          smoothFactor: 0,
+          dashArray: dashArray,
+          lineJoin: 'round',
+          lineCap: 'round',
+          className: 'zone-border'
+        });
 
-        ${
-          !isCaptured
-            ? `<br><br>🏃 Нажми СТАРТ, чтобы захватить!`
-            : ''
-        }
+        let statusText = '';
+        if (!isCaptured) statusText = t('free');
+        else if (isMine && protected_) statusText = t('protected');
+        else if (isMine && !protected_) statusText = t('vulnerable');
+        else statusText = t('other');
 
-      </div>
-    `);
+        polygon.bindPopup(`
+          <div style="min-width:180px;font-family:-apple-system,Arial,sans-serif;line-height:1.5;">
+            <b style="font-size:16px;">🏛️ ${t('zones')} ${zone.id}</b><br>
+            <b>${zone.name}</b><br><br>
+            📍 ${t('sector')}: ${zone.sector}<br>
+            📏 ${t('perimeter')}: ${perimeter} м<br><br>
+            <b>${statusText}</b>
+            ${isCaptured ? `<br>👤 ${t('owner')}: ${isMine ? t('yourZone') : t('otherPlayer')}` : ''}
+            ${isCaptured && isMine ? `<br>⭐ ${t('points')}: ${points}` : ''}
+            ${!isCaptured ? `<br><br>🏃 Нажми СТАРТ, чтобы захватить!` : ''}
+          </div>
+        `);
 
+        polygon.on('click', () => {
+          if (highlightedZone === zone.id) {
+            highlightedZone = null;
+          } else {
+            highlightedZone = zone.id;
+          }
+          drawZones();
+          let clickedStatus = '';
+          if (!isCaptured) clickedStatus = t('free');
+          else if (isMine && protected_) clickedStatus = t('protected');
+          else if (isMine && !protected_) clickedStatus = t('vulnerable');
+          else clickedStatus = t('other');
+          statsContent.innerHTML = `
+            <div class="stat-item">🏛️ ${t('zones')} ${zone.id}</div>
+            <div class="stat-item">📍 ${zone.name}</div>
+            <div class="stat-item">📐 ${t('sector')}: ${zone.sector}</div>
+            <div class="stat-item">📏 ${t('perimeter')}: ${perimeter} м</div>
+            <div class="stat-item" style="border-bottom:none;color:${isCaptured ? (isMine ? (protected_ ? '#2ecc71' : '#f1c40f') : '#e74c3c') : '#ffffff'};font-weight:bold;">${clickedStatus}</div>
+            ${isCaptured && isMine ? `<div class="stat-item" style="border-bottom:none;color:#f1c40f;font-weight:bold;">⭐ ${t('points')}: ${points}</div>` : ''}
+          `;
+        });
 
-    /*
-     * =========================================================
-     * КЛИК ПО ЗОНЕ
-     * =========================================================
-     */
+        polygon.addTo(map);
+        zoneLayers.push(polygon);
 
-    polygon.on('click', () => {
+        const center = zone.coords.reduce((acc, p) => [acc[0] + p[0] / zone.coords.length, acc[1] + p[1] / zone.coords.length], [0, 0]);
 
-      if (highlightedZone === zone.id) {
-        highlightedZone = null;
-      } else {
-        highlightedZone = zone.id;
-      }
+        let labelHtml = zone.id;
+        if (isCaptured && isMine && protected_) labelHtml += ' 🔒';
+        else if (isCaptured && isMine && !protected_) labelHtml += ' ⚠️';
+        else if (isCaptured && !isMine) labelHtml += ' 🔴';
 
-      drawZones();
+        const label = L.marker(center, {
+          icon: L.divIcon({
+            className: `zone-label ${labelClass}`,
+            html: labelHtml,
+            iconSize: [58, 38],
+            iconAnchor: [29, 19]
+          }),
+          interactive: false
+        });
+        label.addTo(map);
+        labelLayers.push(label);
+      });
 
-      let clickedStatus = '';
-
-      if (!isCaptured) {
-        clickedStatus = t('free');
-      }
-
-      else if (isMine && protected_) {
-        clickedStatus = t('protected');
-      }
-
-      else if (isMine && !protected_) {
-        clickedStatus = t('vulnerable');
-      }
-
-      else {
-        clickedStatus = t('other');
-      }
-
-      statsContent.innerHTML = `
-
-        <div class="stat-item">
-          🏛️ ${t('zones')} ${zone.id}
-        </div>
-
-        <div class="stat-item">
-          📍 ${zone.name}
-        </div>
-
-        <div class="stat-item">
-          📐 ${t('sector')}: ${zone.sector}
-        </div>
-
-        <div class="stat-item">
-          📏 ${t('perimeter')}: ${perimeter} м
-        </div>
-
-        <div
-          class="stat-item"
-          style="
-            border-bottom:none;
-            color:${
-              isCaptured
-                ? (
-                    isMine
-                      ? (
-                          protected_
-                            ? '#2ecc71'
-                            : '#f1c40f'
-                        )
-                      : '#e74c3c'
-                  )
-                : '#ffffff'
-            };
-            font-weight:bold;
-          "
-        >
-          ${clickedStatus}
-        </div>
-
-        ${
-          isCaptured && isMine
-            ? `
-              <div
-                class="stat-item"
-                style="
-                  border-bottom:none;
-                  color:#f1c40f;
-                  font-weight:bold;
-                "
-              >
-                ⭐ ${t('points')}: ${points}
-              </div>
-            `
-            : ''
-        }
-
-      `;
-    });
-
-
-    /*
-     * =========================================================
-     * ДОБАВЛЯЕМ ПОЛИГОН
-     * =========================================================
-     */
-
-    polygon.addTo(map);
-
-    zoneLayers.push(polygon);
-
-
-    /*
-     * =========================================================
-     * ЦЕНТР ЗОНЫ
-     * =========================================================
-     */
-
-    const center = zone.coords.reduce(
-      (acc, p) => [
-        acc[0] + p[0] / zone.coords.length,
-        acc[1] + p[1] / zone.coords.length
-      ],
-      [0, 0]
-    );
-
-
-    /*
-     * =========================================================
-     * НОМЕР ЗОНЫ
-     * =========================================================
-     */
-
-    let labelHtml = zone.id;
-
-    if (isCaptured && isMine && protected_) {
-
-      labelHtml += ' 🔒';
-
+      updateUI();
+      updateLeaderboard();
     }
-
-    else if (isCaptured && isMine && !protected_) {
-
-      labelHtml += ' ⚠️';
-
-    }
-
-    else if (isCaptured && !isMine) {
-
-      labelHtml += ' 🔴';
-
-    }
-
-
-    /*
-     * =========================================================
-     * LABEL
-     * =========================================================
-     */
-
-    const label = L.marker(center, {
-
-      icon: L.divIcon({
-
-        className:
-          `zone-label ${labelClass}`,
-
-        html: labelHtml,
-
-        iconSize: [58, 38],
-
-        iconAnchor: [29, 19]
-
-      }),
-
-      interactive: false
-
-    });
-
-
-    label.addTo(map);
-
-    labelLayers.push(label);
-
-  });
-
-
-  updateUI();
-
-  updateLeaderboard();
-}
 
     // ============================================================
     // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
