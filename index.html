@@ -1923,7 +1923,7 @@
 
         const result = await supabase.post('online_players', newData);
         console.log('✅ Вставка:', result);
-        alert('✅ Координаты отправлены в Supabase!');
+      
         
       } catch (e) {
         console.error('❌ ОШИБКА в updateOnlineStatus:', e);
