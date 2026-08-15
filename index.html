@@ -683,154 +683,434 @@
     // РИСОВАНИЕ ЗОН
     // ============================================================
     function drawZones() {
-      zoneLayers.forEach(l => map.removeLayer(l));
-      labelLayers.forEach(l => map.removeLayer(l));
-      zoneLayers = [];
-      labelLayers = [];
+  zoneLayers.forEach(l => map.removeLayer(l));
+  labelLayers.forEach(l => map.removeLayer(l));
 
-      zonesData.forEach((zone) => {
-        const isMine = zone.owner === 'me';
-        const isCaptured = !!zone.capturedAt;
-        const protected_ = isProtected(zone);
-        const perimeter = calcPerimeter(zone.coords);
-        const points = getPoints(zone);
-        const isHighlighted = highlightedZone === zone.id;
-        
-        let color;
-        if (!isCaptured) {
-          color = 'rgba(100,100,100,0.3)';
-        } else if (isMine) {
-          color = playerColor || '#2ecc71';
-        } else {
-          color = zone.ownerColor || '#e74c3c';
-        }
+  zoneLayers = [];
+  labelLayers = [];
 
-        let fillColor, fillOpacity, weight, labelClass, dashArray;
+  zonesData.forEach((zone) => {
 
-        if (!isCaptured) {
-          fillColor = 'rgba(100,100,100,0.05)';
-          fillOpacity = 0.05;
-          weight = isHighlighted ? 5 : 2;
-          labelClass = 'free';
-          dashArray = '5, 5';
-        } else if (isMine) {
-          if (protected_) {
-            fillColor = isHighlighted ? color + '88' : color + '44';
-            fillOpacity = isHighlighted ? 0.5 : 0.25;
-            weight = isHighlighted ? 6 : 4;
-            labelClass = 'captured';
-            dashArray = null;
-          } else {
-            fillColor = isHighlighted ? '#f1c40f88' : '#f1c40f44';
-            fillOpacity = isHighlighted ? 0.5 : 0.25;
-            weight = isHighlighted ? 6 : 4;
-            labelClass = 'vulnerable';
-            dashArray = null;
-          }
-        } else {
-          fillColor = isHighlighted ? color + '66' : color + '33';
-          fillOpacity = isHighlighted ? 0.4 : 0.2;
-          weight = isHighlighted ? 5 : 3;
-          labelClass = 'other';
-          dashArray = null;
-        }
+    const isMine = zone.owner === 'me';
+    const isCaptured = !!zone.capturedAt;
+    const protected_ = isProtected(zone);
+    const perimeter = calcPerimeter(zone.coords);
+    const points = getPoints(zone);
+    const isHighlighted = highlightedZone === zone.id;
 
-        const polygon = L.polygon(zone.coords, {
-          color: color,
-          weight: weight,
-          opacity: isHighlighted ? 1 : 0.9,
-          fillColor: fillColor,
-          fillOpacity: fillOpacity,
-          interactive: true,
-          smoothFactor: 1,
-          dashArray: dashArray,
-          className: isHighlighted ? 'highlighted-zone' : ''
-        });
+    let borderColor;
+    let fillColor;
+    let fillOpacity;
+    let weight;
+    let dashArray = null;
+    let labelClass;
 
-        let statusText = '';
-        if (!isCaptured) {
-          statusText = t('free');
-        } else if (isMine && protected_) {
-          statusText = t('protected');
-        } else if (isMine && !protected_) {
-          statusText = t('vulnerable');
-        } else {
-          statusText = t('other');
-        }
+    /*
+     * =========================================================
+     * СВОБОДНАЯ ЗОНА
+     * =========================================================
+     */
+    if (!isCaptured) {
 
-        polygon.bindPopup(`
-          <b>🏛️ ${t('zones')} ${zone.id}</b><br>
-          ${zone.name}<br>
-          📍 ${t('sector')}: ${zone.sector}<br>
-          📏 ${t('perimeter')}: ${perimeter} м<br>
-          ${isCaptured ? `👤 ${t('owner')}: ${isMine ? t('yourZone') : t('otherPlayer')}` : t('free')}<br>
-          ${isCaptured ? `🛡️ ${statusText}` : ''}<br>
-          ${isCaptured && isMine ? `⭐ ${t('points')}: ${points}` : ''}
-          ${!isCaptured ? '🏃 Нажми СТАРТ, чтобы захватить!' : ''}
-        `);
+      borderColor = '#ffffff';
+      fillColor = '#666666';
+      fillOpacity = isHighlighted ? 0.16 : 0.07;
 
-        polygon.on('click', () => {
-          if (highlightedZone === zone.id) {
-            highlightedZone = null;
-          } else {
-            highlightedZone = zone.id;
-          }
-          drawZones();
-          let statusText = '';
-          if (!isCaptured) {
-            statusText = t('free');
-          } else if (isMine && protected_) {
-            statusText = t('protected');
-          } else if (isMine && !protected_) {
-            statusText = t('vulnerable');
-          } else {
-            statusText = t('other');
-          }
-          statsContent.innerHTML = `
-            <div class="stat-item">🏛️ ${t('zones')} ${zone.id}</div>
-            <div class="stat-item">📍 ${zone.name}</div>
-            <div class="stat-item">📐 ${t('sector')}: ${zone.sector}</div>
-            <div class="stat-item">📏 ${t('perimeter')}: ${perimeter} м</div>
-            <div class="stat-item" style="border-bottom:none;color:${isCaptured ? (isMine ? (protected_ ? '#2ecc71' : '#f1c40f') : '#e74c3c') : '#888'};">
-              ${statusText}
-            </div>
-            ${isCaptured && isMine ? `<div class="stat-item" style="border-bottom:none;color:#f1c40f;">⭐ ${t('points')}: ${points}</div>` : ''}
-          `;
-        });
+      weight = isHighlighted ? 7 : 3.5;
+      dashArray = '8 6';
 
-        polygon.addTo(map);
-        zoneLayers.push(polygon);
+      labelClass = 'free';
 
-        const center = zone.coords.reduce(
-          (acc, p) => [acc[0] + p[0] / zone.coords.length, acc[1] + p[1] / zone.coords.length],
-          [0, 0]
-        );
-
-        let labelHtml = zone.id;
-        if (isCaptured && isMine && protected_) {
-          labelHtml += ' 🔒';
-        } else if (isCaptured && isMine && !protected_) {
-          labelHtml += ' ⚠️';
-        } else if (isCaptured && !isMine) {
-          labelHtml += ' 🔴';
-        }
-
-        const label = L.marker(center, {
-          icon: L.divIcon({
-            className: `zone-label ${labelClass}`,
-            html: labelHtml,
-            iconSize: [50, 34],
-            iconAnchor: [25, 17]
-          }),
-          interactive: false
-        });
-        label.addTo(map);
-        labelLayers.push(label);
-      });
-
-      updateUI();
-      updateLeaderboard();
     }
+
+    /*
+     * =========================================================
+     * МОЯ ЗОНА — ЗАЩИЩЕНА
+     * =========================================================
+     */
+    else if (isMine && protected_) {
+
+      borderColor = playerColor || '#2ecc71';
+      fillColor = playerColor || '#2ecc71';
+
+      fillOpacity = isHighlighted ? 0.38 : 0.20;
+
+      weight = isHighlighted ? 8 : 5;
+
+      labelClass = 'captured';
+
+    }
+
+    /*
+     * =========================================================
+     * МОЯ ЗОНА — УЯЗВИМА
+     * =========================================================
+     */
+    else if (isMine && !protected_) {
+
+      borderColor = '#f1c40f';
+      fillColor = '#f1c40f';
+
+      fillOpacity = isHighlighted ? 0.40 : 0.20;
+
+      weight = isHighlighted ? 8 : 5;
+
+      labelClass = 'vulnerable';
+
+    }
+
+    /*
+     * =========================================================
+     * ЧУЖАЯ ЗОНА
+     * =========================================================
+     */
+    else {
+
+      borderColor = zone.ownerColor || '#e74c3c';
+      fillColor = zone.ownerColor || '#e74c3c';
+
+      fillOpacity = isHighlighted ? 0.35 : 0.16;
+
+      weight = isHighlighted ? 8 : 4.5;
+
+      labelClass = 'other';
+    }
+
+
+    /*
+     * =========================================================
+     * ПОЛИГОН
+     * =========================================================
+     */
+
+    const polygon = L.polygon(zone.coords, {
+
+      color: borderColor,
+
+      weight: weight,
+
+      opacity: 1,
+
+      fillColor: fillColor,
+
+      fillOpacity: fillOpacity,
+
+      interactive: true,
+
+      smoothFactor: 0,
+
+      dashArray: dashArray,
+
+      lineJoin: 'round',
+
+      lineCap: 'round',
+
+      className: 'zone-border'
+
+    });
+
+
+    /*
+     * =========================================================
+     * ДОПОЛНИТЕЛЬНЫЕ CSS-КЛАССЫ
+     * =========================================================
+     */
+
+    if (!isCaptured) {
+      polygon.options.className =
+        'zone-border zone-free-border';
+    }
+
+    else if (isMine && protected_) {
+      polygon.options.className =
+        'zone-border zone-my-protected-border';
+    }
+
+    else if (isMine && !protected_) {
+      polygon.options.className =
+        'zone-border zone-my-vulnerable-border';
+    }
+
+    else {
+      polygon.options.className =
+        'zone-border zone-other-border';
+    }
+
+
+    if (isHighlighted) {
+      polygon.options.className +=
+        ' zone-selected-border';
+    }
+
+
+    /*
+     * =========================================================
+     * ТЕКСТ СТАТУСА
+     * =========================================================
+     */
+
+    let statusText = '';
+
+    if (!isCaptured) {
+      statusText = t('free');
+    }
+
+    else if (isMine && protected_) {
+      statusText = t('protected');
+    }
+
+    else if (isMine && !protected_) {
+      statusText = t('vulnerable');
+    }
+
+    else {
+      statusText = t('other');
+    }
+
+
+    /*
+     * =========================================================
+     * POPUP
+     * =========================================================
+     */
+
+    polygon.bindPopup(`
+      <div style="
+        min-width:180px;
+        font-family:-apple-system,Arial,sans-serif;
+        line-height:1.5;
+      ">
+
+        <b style="font-size:16px;">
+          🏛️ ${t('zones')} ${zone.id}
+        </b>
+
+        <br>
+
+        <b>${zone.name}</b>
+
+        <br><br>
+
+        📍 ${t('sector')}: ${zone.sector}
+
+        <br>
+
+        📏 ${t('perimeter')}: ${perimeter} м
+
+        <br><br>
+
+        <b>${statusText}</b>
+
+        ${
+          isCaptured
+            ? `<br>👤 ${t('owner')}: ${
+                isMine ? t('yourZone') : t('otherPlayer')
+              }`
+            : ''
+        }
+
+        ${
+          isCaptured && isMine
+            ? `<br>⭐ ${t('points')}: ${points}`
+            : ''
+        }
+
+        ${
+          !isCaptured
+            ? `<br><br>🏃 Нажми СТАРТ, чтобы захватить!`
+            : ''
+        }
+
+      </div>
+    `);
+
+
+    /*
+     * =========================================================
+     * КЛИК ПО ЗОНЕ
+     * =========================================================
+     */
+
+    polygon.on('click', () => {
+
+      if (highlightedZone === zone.id) {
+        highlightedZone = null;
+      } else {
+        highlightedZone = zone.id;
+      }
+
+      drawZones();
+
+      let clickedStatus = '';
+
+      if (!isCaptured) {
+        clickedStatus = t('free');
+      }
+
+      else if (isMine && protected_) {
+        clickedStatus = t('protected');
+      }
+
+      else if (isMine && !protected_) {
+        clickedStatus = t('vulnerable');
+      }
+
+      else {
+        clickedStatus = t('other');
+      }
+
+      statsContent.innerHTML = `
+
+        <div class="stat-item">
+          🏛️ ${t('zones')} ${zone.id}
+        </div>
+
+        <div class="stat-item">
+          📍 ${zone.name}
+        </div>
+
+        <div class="stat-item">
+          📐 ${t('sector')}: ${zone.sector}
+        </div>
+
+        <div class="stat-item">
+          📏 ${t('perimeter')}: ${perimeter} м
+        </div>
+
+        <div
+          class="stat-item"
+          style="
+            border-bottom:none;
+            color:${
+              isCaptured
+                ? (
+                    isMine
+                      ? (
+                          protected_
+                            ? '#2ecc71'
+                            : '#f1c40f'
+                        )
+                      : '#e74c3c'
+                  )
+                : '#ffffff'
+            };
+            font-weight:bold;
+          "
+        >
+          ${clickedStatus}
+        </div>
+
+        ${
+          isCaptured && isMine
+            ? `
+              <div
+                class="stat-item"
+                style="
+                  border-bottom:none;
+                  color:#f1c40f;
+                  font-weight:bold;
+                "
+              >
+                ⭐ ${t('points')}: ${points}
+              </div>
+            `
+            : ''
+        }
+
+      `;
+    });
+
+
+    /*
+     * =========================================================
+     * ДОБАВЛЯЕМ ПОЛИГОН
+     * =========================================================
+     */
+
+    polygon.addTo(map);
+
+    zoneLayers.push(polygon);
+
+
+    /*
+     * =========================================================
+     * ЦЕНТР ЗОНЫ
+     * =========================================================
+     */
+
+    const center = zone.coords.reduce(
+      (acc, p) => [
+        acc[0] + p[0] / zone.coords.length,
+        acc[1] + p[1] / zone.coords.length
+      ],
+      [0, 0]
+    );
+
+
+    /*
+     * =========================================================
+     * НОМЕР ЗОНЫ
+     * =========================================================
+     */
+
+    let labelHtml = zone.id;
+
+    if (isCaptured && isMine && protected_) {
+
+      labelHtml += ' 🔒';
+
+    }
+
+    else if (isCaptured && isMine && !protected_) {
+
+      labelHtml += ' ⚠️';
+
+    }
+
+    else if (isCaptured && !isMine) {
+
+      labelHtml += ' 🔴';
+
+    }
+
+
+    /*
+     * =========================================================
+     * LABEL
+     * =========================================================
+     */
+
+    const label = L.marker(center, {
+
+      icon: L.divIcon({
+
+        className:
+          `zone-label ${labelClass}`,
+
+        html: labelHtml,
+
+        iconSize: [58, 38],
+
+        iconAnchor: [29, 19]
+
+      }),
+
+      interactive: false
+
+    });
+
+
+    label.addTo(map);
+
+    labelLayers.push(label);
+
+  });
+
+
+  updateUI();
+
+  updateLeaderboard();
+}
 
     // ============================================================
     // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
