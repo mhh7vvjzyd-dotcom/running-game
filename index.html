@@ -1081,41 +1081,65 @@
       );
     }
 
-    function stopRun() {
-      if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
-      isRunning = false;
-      actionBtn.textContent = t('start');
-      actionBtn.className = '';
+ function stopRun() {
+  if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+  isRunning = false;
+  actionBtn.textContent = t('start');
+  actionBtn.className = '';
 
-      if (route.length < 5) {
-        alert(t('tooShort'));
-        return;
+  if (route.length < 5) {
+    alert(t('tooShort'));
+    return;
+  }
+
+  const first = route[0];
+  const last = route[route.length - 1];
+  if (map.distance(first, last) >= 50) {
+    alert(t('notClosed'));
+    return;
+  }
+
+  let captured = false;
+
+  for (const zone of zonesData) {
+    if (zone.owner === 'me') continue;
+
+    const perimeter = zone.coords;
+    let pointsOnPerimeter = 0;
+    const DISTANCE_THRESHOLD = 30;
+
+    for (let i = 0; i < route.length; i++) {
+      const p = route[i];
+      let minDist = Infinity;
+
+      for (let j = 0; j < perimeter.length; j++) {
+        const d = map.distance(p, perimeter[j]);
+        if (d < minDist) minDist = d;
       }
 
-      const first = route[0];
-      const last = route[route.length - 1];
-      if (map.distance(first, last) < 50) {
-        let captured = false;
-        for (const zone of zonesData) {
-          if (zone.owner === 'me') continue;
-          const center = zone.coords.reduce(
-            (acc, p) => [acc[0] + p[0] / zone.coords.length, acc[1] + p[1] / zone.coords.length],
-            [0, 0]
-          );
-          if (pointInPolygon(center, route)) {
-            captureZone(zone.id);
-            captured = true;
-            break;
-          }
-        }
-        if (!captured) {
-          alert(t('noZones'));
-        }
-      } else {
-        alert(t('notClosed'));
+      if (minDist < DISTANCE_THRESHOLD) {
+        pointsOnPerimeter++;
       }
-      updateUI();
     }
+
+    const coverage = pointsOnPerimeter / route.length;
+
+    console.log(`📍 Зона ${zone.id}: покрытие ${Math.round(coverage * 100)}%`);
+
+    // 🔥 80% маршрута должно проходить вдоль периметра
+    if (coverage >= 0.8) {
+      captureZone(zone.id);
+      captured = true;
+      break;
+    }
+  }
+
+  if (!captured) {
+    alert(t('noZones'));
+  }
+
+  updateUI();
+}
 
     function pointInPolygon(point, polygon) {
       let inside = false;
