@@ -1747,6 +1747,99 @@
     }
 
     console.log('🏃 Игра с Supabase и индикатором прогресса запущена!');
+    // ============================================================
+    // АДМИН-ПАНЕЛЬ
+    // ============================================================
+    const ADMIN_PASSWORD = 'admin123';
+
+    function showAdminLogin() {
+      document.getElementById('admin-login').style.display = 'block';
+      document.getElementById('admin-password').value = '';
+      document.getElementById('admin-login-error').style.display = 'none';
+    }
+
+    function checkAdminPassword() {
+      const pass = document.getElementById('admin-password').value;
+      if (pass === ADMIN_PASSWORD) {
+        document.getElementById('admin-login').style.display = 'none';
+        document.getElementById('admin-panel').style.display = 'block';
+        loadAdminData();
+      } else {
+        document.getElementById('admin-login-error').style.display = 'block';
+      }
+    }
+
+    document.getElementById('admin-password').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') checkAdminPassword();
+    });
+
+    async function loadAdminData() {
+      try {
+        const players = await getPlayers();
+        const captures = await getCaptures();
+        
+        const html = players.map(p => {
+          const captureCount = captures.filter(c => c.player_id === p.id).length;
+          return `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-bottom:1px solid #2a2a2a; font-size:13px;">
+              <span>
+                <span style="color:${p.color}; font-weight:bold;">●</span>
+                ${p.username}
+                <span style="color:#666; font-size:11px;">(${captureCount} зон)</span>
+              </span>
+              <button onclick="deletePlayerAdmin('${p.id}')" style="background:#e74c3c; color:white; border:none; border-radius:4px; padding:2px 10px; font-size:11px; cursor:pointer;">Удалить</button>
+            </div>
+          `;
+        }).join('');
+
+        document.getElementById('admin-player-list').innerHTML = html || '<div style="color:#666; text-align:center; padding:12px;">Нет игроков</div>';
+      } catch (e) {
+        console.error('Ошибка загрузки:', e);
+        document.getElementById('admin-player-list').innerHTML = '<div style="color:#e74c3c; text-align:center; padding:12px;">⚠️ Ошибка загрузки</div>';
+      }
+    }
+
+    async function deletePlayerAdmin(playerId) {
+      if (!confirm('Удалить этого игрока и все его захваты?')) return;
+      
+      try {
+        await supabase.query(`captures?player_id=eq.${playerId}`, { method: 'DELETE' });
+        await supabase.query(`players?id=eq.${playerId}`, { method: 'DELETE' });
+        
+        await loadGameData();
+        drawZones();
+        updateLeaderboard();
+        loadAdminData();
+        alert('✅ Игрок удалён!');
+      } catch (e) {
+        console.error('Ошибка удаления:', e);
+        alert('❌ Ошибка при удалении');
+      }
+    }
+
+    async function resetAllZonesAdmin() {
+      if (!confirm('Сбросить ВСЕ захваты зон? Это действие необратимо!')) return;
+      
+      try {
+        await supabase.query('captures', { method: 'DELETE' });
+        zonesData.forEach(z => {
+          z.capturedAt = null;
+          z.owner = null;
+          z.ownerColor = null;
+        });
+        saveState();
+        drawZones();
+        updateLeaderboard();
+        alert('✅ Все захваты сброшены!');
+      } catch (e) {
+        console.error('Ошибка сброса:', e);
+        alert('❌ Ошибка при сбросе');
+      }
+    }
+
+    function closeAdminPanel() {
+      document.getElementById('admin-panel').style.display = 'none';
+    }
   </script>
 </body>
 </html>
