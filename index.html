@@ -116,7 +116,40 @@
     .highlighted-zone {
       filter: drop-shadow(0 0 15px rgba(46, 204, 113, 0.8));
     }
+/* ЯРКИЕ ГРАНИЦЫ ЗОН */
+.zone-border {
+  vector-effect: non-scaling-stroke;
+}
 
+.zone-free-border {
+  stroke: #ffffff !important;
+  stroke-width: 3.5px !important;
+  stroke-opacity: 0.95 !important;
+  stroke-dasharray: 8 6 !important;
+}
+
+.zone-my-protected-border {
+  stroke: #2ecc71 !important;
+  stroke-width: 4.5px !important;
+  stroke-opacity: 1 !important;
+}
+
+.zone-my-vulnerable-border {
+  stroke: #f1c40f !important;
+  stroke-width: 5px !important;
+  stroke-opacity: 1 !important;
+}
+
+.zone-other-border {
+  stroke-width: 4.5px !important;
+  stroke-opacity: 1 !important;
+}
+
+.zone-selected-border {
+  stroke-width: 7px !important;
+  stroke-opacity: 1 !important;
+  filter: drop-shadow(0 0 6px rgba(255,255,255,0.9));
+}
     .leaderboard {
       position: fixed;
       left: 16px;
