@@ -1946,7 +1946,7 @@
     function startOnlineTracking() {
       console.log('🚀 startOnlineTracking вызвана!');
       
-      // ПОКАЗЫВАЕМ СООБЩЕНИЕ НА ЭКРАНЕ
+      // ВИЗУАЛЬНАЯ ОТЛАДКА НА ЭКРАНЕ
       const debugDiv = document.createElement('div');
       debugDiv.id = 'debug-status';
       debugDiv.style.cssText = `
@@ -1954,75 +1954,89 @@
         bottom: 240px;
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(0,0,0,0.8);
+        background: rgba(0,0,0,0.9);
         color: #2ecc71;
-        padding: 8px 16px;
+        padding: 10px 16px;
         border-radius: 8px;
         z-index: 9999;
-        font-size: 12px;
+        font-size: 13px;
         font-family: monospace;
         text-align: center;
-        border: 1px solid rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.15);
         display: none;
+        max-width: 90%;
+        word-break: break-all;
       `;
       document.body.appendChild(debugDiv);
       
-      function setDebugText(text, color = '#2ecc71') {
+      // ЛОГ В localStorage
+      let log = localStorage.getItem('debugLog') || '';
+      function addLog(text) {
+        const time = new Date().toLocaleTimeString();
+        log = log + `\n[${time}] ${text}`;
+        localStorage.setItem('debugLog', log);
+        console.log(text);
+        
+        // Показываем на экране
         const el = document.getElementById('debug-status');
         if (el) {
           el.style.display = 'block';
           el.textContent = text;
-          el.style.color = color;
+          el.style.color = text.includes('✅') ? '#2ecc71' : text.includes('❌') ? '#e74c3c' : '#f1c40f';
         }
       }
       
-      setDebugText('🔄 Запуск отслеживания...', '#f1c40f');
+      addLog('🔄 Запуск отслеживания...');
+      addLog(`👤 playerId: ${playerId || 'НЕТ!'}`);
+      addLog(`📍 currentPlayer: ${currentPlayer || 'НЕТ!'}`);
 
       if (onlineTrackingInterval) clearInterval(onlineTrackingInterval);
       if (onlineLoadInterval) clearInterval(onlineLoadInterval);
       
       // ПЕРВАЯ ОТПРАВКА СРАЗУ
       if (navigator.geolocation && playerId) {
-        setDebugText('📡 Запрос геолокации...', '#f1c40f');
+        addLog('📡 Запрос геолокации...');
         navigator.geolocation.getCurrentPosition(
           pos => {
-            setDebugText(`📍 Координаты: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`, '#2ecc71');
-            updateOnlineStatus(pos.coords.latitude, pos.coords.longitude);
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            addLog(`📍 Координаты: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+            updateOnlineStatus(lat, lng);
           },
           (err) => {
-            setDebugText(`❌ Ошибка: ${err.message}`, '#e74c3c');
-            console.error('❌ Ошибка геолокации:', err);
+            addLog(`❌ Ошибка геолокации: ${err.message}`);
           },
           { enableHighAccuracy: true, timeout: 10000 }
         );
       } else {
-        setDebugText('❌ Геолокация или playerId отсутствуют', '#e74c3c');
+        addLog('❌ Геолокация или playerId отсутствуют');
       }
       
       // ИНТЕРВАЛ
       onlineTrackingInterval = setInterval(() => {
         if (navigator.geolocation && playerId) {
-          setDebugText('📡 Обновление...', '#f1c40f');
+          addLog('📡 Обновление...');
           navigator.geolocation.getCurrentPosition(
             pos => {
-              setDebugText(`📍 Обновлено: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`, '#2ecc71');
-              updateOnlineStatus(pos.coords.latitude, pos.coords.longitude);
+              const lat = pos.coords.latitude;
+              const lng = pos.coords.longitude;
+              addLog(`📍 Обновлено: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+              updateOnlineStatus(lat, lng);
             },
             (err) => {
-              setDebugText(`❌ Ошибка: ${err.message}`, '#e74c3c');
-              console.error('❌ Ошибка геолокации:', err);
+              addLog(`❌ Ошибка обновления: ${err.message}`);
             },
             { enableHighAccuracy: true, timeout: 10000 }
           );
         } else {
-          setDebugText('❌ Нет доступа к геолокации', '#e74c3c');
+          addLog('❌ Нет доступа к геолокации');
         }
       }, 5000);
       
       onlineLoadInterval = setInterval(loadOnlinePlayers, 5000);
       loadOnlinePlayers();
-      setDebugText('✅ Отслеживание запущено!', '#2ecc71');
-      console.log('✅ startOnlineTracking запущена!');
+      addLog('✅ Отслеживание запущено!');
+      addLog('📋 Лог сохранён в localStorage');
     }
 
     async function stopOnlineTracking() {
