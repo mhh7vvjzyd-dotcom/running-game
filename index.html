@@ -268,7 +268,36 @@
 <body>
 
   <div id="map"></div>
-<!-- АДМИН-ПАНЕЛЬ -->
+
+  <!-- ИНДИКАТОР ПРОГРЕССА -->
+  <div id="capture-progress" style="
+    position: fixed;
+    bottom: 180px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.92);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 14px;
+    z-index: 1000;
+    text-align: center;
+    min-width: 220px;
+    display: none;
+    border: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+  ">
+    <div id="progress-zone-name" style="font-size: 14px; margin-bottom: 6px; color: #aaa;">🏛️ Зона</div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span id="progress-percent" style="font-size: 24px; font-weight: bold; color: #f1c40f; min-width: 48px;">0%</span>
+      <div style="flex: 1; height: 8px; background: #333; border-radius: 4px; overflow: hidden;">
+        <div id="progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #e74c3c, #f1c40f, #2ecc71); border-radius: 4px; transition: width 0.3s ease;"></div>
+      </div>
+    </div>
+    <div style="font-size: 11px; color: #666; margin-top: 4px;">Нужно 80% для захвата</div>
+  </div>
+
+  <!-- АДМИН-ПАНЕЛЬ (СКРЫТА ПО УМОЛЧАНИЮ) -->
   <div id="admin-panel" style="
     position: fixed;
     top: 50%;
@@ -335,8 +364,7 @@
     </div>
   </div>
 
-  <!-- КНОПКА ВХОДА В АДМИНКУ -->
-  <!-- КНОПКА ВХОДА В АДМИНКУ (ВИДНА ТОЛЬКО АДМИНУ) -->
+  <!-- КНОПКА ВХОДА В АДМИНКУ (СКРЫТА ПО УМОЛЧАНИЮ) -->
   <div id="admin-button" style="
     position: fixed;
     top: 70px;
@@ -396,33 +424,6 @@
     ">Войти</button>
     <div id="admin-login-error" style="color: #e74c3c; font-size: 13px; margin-top: 8px; display: none;">❌ Неверный пароль</div>
   </div>
-  <!-- ИНДИКАТОР ПРОГРЕССА ЗАХВАТА -->
-  <div id="capture-progress" style="
-    position: fixed;
-    bottom: 180px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0,0,0,0.92);
-    color: white;
-    padding: 12px 20px;
-    border-radius: 14px;
-    z-index: 1000;
-    text-align: center;
-    min-width: 220px;
-    display: none;
-    border: 1px solid rgba(255,255,255,0.1);
-    backdrop-filter: blur(8px);
-    box-shadow: 0 4px 30px rgba(0,0,0,0.5);
-  ">
-    <div id="progress-zone-name" style="font-size: 14px; margin-bottom: 6px; color: #aaa;">🏛️ Зона</div>
-    <div style="display: flex; align-items: center; gap: 12px;">
-      <span id="progress-percent" style="font-size: 24px; font-weight: bold; color: #f1c40f; min-width: 48px;">0%</span>
-      <div style="flex: 1; height: 8px; background: #333; border-radius: 4px; overflow: hidden;">
-        <div id="progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #e74c3c, #f1c40f, #2ecc71); border-radius: 4px; transition: width 0.3s ease;"></div>
-      </div>
-    </div>
-    <div style="font-size: 11px; color: #666; margin-top: 4px;">Нужно 80% для захвата</div>
-  </div>
 
   <div class="modal-overlay" id="nameModal">
     <div class="modal">
@@ -479,16 +480,18 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     // ============================================================
-    // SUPABASE - ВСТАВЬ СВОЙ КЛЮЧ СЮДА!
+    // SUPABASE
     // ============================================================
     const SUPABASE_URL = 'https://onmcvmozceyatcmxmnnb.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_YC1bnXLPq4bn3a_DpjE6xw_Vp3MdP1v';
 
     // ============================================================
-    // АДМИН - СКРЫТЫЙ ИГРОК (НЕ ПОКАЗЫВАЕТСЯ В ТАБЛИЦЕ)
+    // АДМИН
     // ============================================================
     const ADMIN_USERNAME = 'Админ';
     const ADMIN_ID = 'fc8295be-ea08-4f78-a1ad-24ec276e90fe';
+    const ADMIN_PASSWORD = 'admin1826';
+
     // ============================================================
     // ПЕРЕВОДЫ
     // ============================================================
@@ -767,7 +770,6 @@
         const captures = await getCaptures();
         const players = await getPlayers();
         
-        // Создаём карту игроков по id
         const playerMap = {};
         players.forEach(p => {
           playerMap[p.id] = { username: p.username, color: p.color };
@@ -776,21 +778,32 @@
         captures.forEach(c => {
           const zone = zonesData.find(z => z.id === c.zone_id);
           if (zone) {
-            // Проверяем, не админ ли захватил зону
             const player = playerMap[c.player_id];
             if (player && player.username === 'Админ') {
-              return; // Пропускаем зоны админа
+              return;
             }
             zone.owner = c.player_id === playerId ? 'me' : c.player_id;
             zone.ownerColor = playerMap[c.player_id]?.color || '#e74c3c';
             zone.capturedAt = c.captured_at || Date.now();
           }
         });
+        
+        // ============================================================
+        // ПОКАЗЫВАЕМ КНОПКУ АДМИНА ТОЛЬКО АДМИНУ
+        // ============================================================
+        const adminBtn = document.getElementById('admin-button');
+        if (playerId === ADMIN_ID) {
+          adminBtn.style.display = 'block';
+        } else {
+          adminBtn.style.display = 'none';
+        }
+        
         console.log('✅ Данные загружены:', captures.length, 'захватов');
       } catch (e) {
         console.warn('⚠️ Ошибка загрузки данных:', e);
       }
     }
+
     // ============================================================
     // КОНСТАНТЫ
     // ============================================================
@@ -802,7 +815,7 @@
     const SEGMENT_SIZE = 10;
 
     // ============================================================
-    // 22 ЗОНЫ (ТВОИ ПРАВИЛЬНЫЕ ЗОНЫ - НЕ ТРОГАЮ!)
+    // 22 ЗОНЫ
     // ============================================================
     const zonesData = [
       // Север (01-10)
@@ -950,7 +963,7 @@
           [12.2584764, 109.1965357]
         ]
       },
-      // Центр (11-18) - ТВОИ ПРАВИЛЬНЫЕ ЗОНЫ
+      // Центр (11-18)
       {
         id: '11', name: 'Vĩnh Mỹ', sector: 'Центр',
         coords: [
@@ -1050,7 +1063,7 @@
           [12.2335969, 109.1976897]
         ]
       },
-      // Юг (19-22) - ТВОИ ПРАВИЛЬНЫЕ ЗОНЫ
+      // Юг (19-22)
       {
         id: '19', name: 'Vĩnh Nam', sector: 'Юг',
         coords: [
@@ -1527,7 +1540,7 @@
     }
 
     // ============================================================
-    // ОТОБРАЖЕНИЕ ПРОГРЕССА ЗАХВАТА (В РЕАЛЬНОМ ВРЕМЕНИ)
+    // ОТОБРАЖЕНИЕ ПРОГРЕССА ЗАХВАТА
     // ============================================================
     function updateCaptureProgress() {
       if (!isRunning || route.length < 2) {
@@ -1606,7 +1619,7 @@
           polyline = L.polyline(route, { color: '#e74c3c', weight: 4, opacity: 0.9 }).addTo(map);
           map.setView(p, 15);
           updateUI();
-          updateCaptureProgress(); // <-- ИНДИКАТОР
+          updateCaptureProgress();
         },
         () => {},
         { enableHighAccuracy: true, maximumAge: 2000 }
@@ -1614,7 +1627,7 @@
     }
 
     function stopRun() {
-      document.getElementById('capture-progress').style.display = 'none'; // <-- СКРЫТИЕ
+      document.getElementById('capture-progress').style.display = 'none';
       if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
       isRunning = false;
       actionBtn.textContent = t('start');
@@ -1767,11 +1780,10 @@
     }
 
     console.log('🏃 Игра с Supabase и индикатором прогресса запущена!');
-    // ============================================================
-    // АДМИН-ПАНЕЛЬ
-    // ============================================================
-    const ADMIN_PASSWORD = 'admin1826';
 
+    // ============================================================
+    // АДМИН-ПАНЕЛЬ - ФУНКЦИИ
+    // ============================================================
     function showAdminLogin() {
       document.getElementById('admin-login').style.display = 'block';
       document.getElementById('admin-password').value = '';
