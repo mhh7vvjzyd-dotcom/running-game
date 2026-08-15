@@ -1886,24 +1886,48 @@
     let onlineLoadInterval = null;
 
     async function updateOnlineStatus(lat, lng) {
-      console.log('📍 updateOnlineStatus вызвана!', lat, lng);
+      console.log('📍 updateOnlineStatus ВЫЗВАНА!', lat, lng);
+      
       if (!playerId) {
-        console.log('❌ playerId нет, пропускаем');
+        console.log('❌ playerId НЕТ!');
+        alert('❌ playerId отсутствует!');
         return;
       }
+      if (!currentPlayer) {
+        console.log('❌ currentPlayer НЕТ!');
+        alert('❌ currentPlayer отсутствует!');
+        return;
+      }
+
+      console.log('📤 Отправка координат...');
+      console.log('➡️ playerId:', playerId);
+      console.log('➡️ currentPlayer:', currentPlayer);
+      console.log('➡️ playerColor:', playerColor);
+
       try {
-        console.log('📤 Отправка координат в Supabase...');
-        await supabase.query(`online_players?player_id=eq.${playerId}`, { method: 'DELETE' });
-        const result = await supabase.post('online_players', {
+        // Пробуем удалить старую запись
+        console.log('🗑️ Удаляем старую запись...');
+        const deleteResult = await supabase.query(`online_players?player_id=eq.${playerId}`, { method: 'DELETE' });
+        console.log('✅ Удаление:', deleteResult);
+
+        // Пробуем вставить новую
+        console.log('✏️ Вставляем новую запись...');
+        const newData = {
           player_id: playerId,
           username: currentPlayer,
           color: playerColor,
           lat: lat,
           lng: lng
-        });
-        console.log('✅ Координаты отправлены!', result);
+        };
+        console.log('📦 Данные:', JSON.stringify(newData));
+
+        const result = await supabase.post('online_players', newData);
+        console.log('✅ Вставка:', result);
+        alert('✅ Координаты отправлены в Supabase!');
+        
       } catch (e) {
-        console.error('❌ Ошибка отправки координат:', e);
+        console.error('❌ ОШИБКА в updateOnlineStatus:', e);
+        alert('❌ Ошибка: ' + e.message);
       }
     }
 
