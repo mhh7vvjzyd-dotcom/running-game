@@ -483,7 +483,7 @@
     // SUPABASE
     // ============================================================
     const SUPABASE_URL = 'https://onmcvmozceyatcmxmnnb.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_YC1bnXLPq4bn3a_DpjE6xw_Vp3MdP1v';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ubWN2bW96Y2V5YXRjbXhtbm5iIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NjY5ODQ1OSwiZXhwIjoyMTAyMjc0NDU5fQ.WswNX824baDjb05JAm8EJhmpIvmztsaqLyP3x4kevOo';
 
     // ============================================================
     // АДМИН
@@ -1876,63 +1876,29 @@
     }
 
     // ============================================================
-    // ОНЛАЙН-ИГРОКИ (ПОКАЗ НА КАРТЕ)
-    // ============================================================
-    // ============================================================
-    // ОНЛАЙН-ИГРОКИ (ПОКАЗ НА КАРТЕ) — С ОТЛАДКОЙ
+    // ОНЛАЙН-ИГРОКИ (ПОКАЗ НА КАРТЕ) — БЕЗ ОТЛАДКИ
     // ============================================================
     let onlineMarkers = [];
     let onlineTrackingInterval = null;
     let onlineLoadInterval = null;
 
     async function updateOnlineStatus(lat, lng) {
-      console.log('📍 updateOnlineStatus ВЫЗВАНА!', lat, lng);
-      
-      if (!playerId) {
-        console.log('❌ playerId НЕТ!');
-        alert('❌ playerId отсутствует!');
-        return;
-      }
-      if (!currentPlayer) {
-        console.log('❌ currentPlayer НЕТ!');
-        alert('❌ currentPlayer отсутствует!');
-        return;
-      }
-
-      console.log('📤 Отправка координат...');
-      console.log('➡️ playerId:', playerId);
-      console.log('➡️ currentPlayer:', currentPlayer);
-      console.log('➡️ playerColor:', playerColor);
-
+      if (!playerId || !currentPlayer) return;
       try {
-        // Пробуем удалить старую запись
-        console.log('🗑️ Удаляем старую запись...');
-        const deleteResult = await supabase.query(`online_players?player_id=eq.${playerId}`, { method: 'DELETE' });
-        console.log('✅ Удаление:', deleteResult);
-
-        // Пробуем вставить новую
-        console.log('✏️ Вставляем новую запись...');
-        const newData = {
+        await supabase.query(`online_players?player_id=eq.${playerId}`, { method: 'DELETE' });
+        await supabase.post('online_players', {
           player_id: playerId,
           username: currentPlayer,
           color: playerColor,
           lat: lat,
           lng: lng
-        };
-        console.log('📦 Данные:', JSON.stringify(newData));
-
-        const result = await supabase.post('online_players', newData);
-        console.log('✅ Вставка:', result);
-      
-        
+        });
       } catch (e) {
-        console.error('❌ ОШИБКА в updateOnlineStatus:', e);
-        alert('❌ Ошибка: ' + e.message);
+        console.error('❌ Ошибка отправки координат:', e);
       }
     }
 
     async function loadOnlinePlayers() {
-      console.log('🔄 loadOnlinePlayers вызвана');
       try {
         const now = new Date();
         const fifteenSecondsAgo = new Date(now.getTime() - 15000);
@@ -1941,17 +1907,10 @@
           { method: 'DELETE' }
         );
         const players = await supabase.query(`online_players?select=*`);
-        console.log('👥 Онлайн игроков:', players.length);
-        
         onlineMarkers.forEach(m => map.removeLayer(m));
         onlineMarkers = [];
-        
         players.forEach(p => {
-          if (p.player_id === playerId) {
-            console.log('⏩ Пропускаем себя:', p.username);
-            return;
-          }
-          console.log('➕ Добавляем маркер для:', p.username);
+          if (p.player_id === playerId) return;
           const marker = L.circleMarker([p.lat, p.lng], {
             radius: 12,
             color: p.color,
@@ -1968,99 +1927,21 @@
     }
 
     function startOnlineTracking() {
-      console.log('🚀 startOnlineTracking вызвана!');
-      
-      // ВИЗУАЛЬНАЯ ОТЛАДКА НА ЭКРАНЕ
-      const debugDiv = document.createElement('div');
-      debugDiv.id = 'debug-status';
-      debugDiv.style.cssText = `
-        position: fixed;
-        bottom: 240px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0,0,0,0.9);
-        color: #2ecc71;
-        padding: 10px 16px;
-        border-radius: 8px;
-        z-index: 9999;
-        font-size: 13px;
-        font-family: monospace;
-        text-align: center;
-        border: 1px solid rgba(255,255,255,0.15);
-        display: none;
-        max-width: 90%;
-        word-break: break-all;
-      `;
-      document.body.appendChild(debugDiv);
-      
-      // ЛОГ В localStorage
-      let log = localStorage.getItem('debugLog') || '';
-      function addLog(text) {
-        const time = new Date().toLocaleTimeString();
-        log = log + `\n[${time}] ${text}`;
-        localStorage.setItem('debugLog', log);
-        console.log(text);
-        
-        // Показываем на экране
-        const el = document.getElementById('debug-status');
-        if (el) {
-          el.style.display = 'block';
-          el.textContent = text;
-          el.style.color = text.includes('✅') ? '#2ecc71' : text.includes('❌') ? '#e74c3c' : '#f1c40f';
-        }
-      }
-      
-      addLog('🔄 Запуск отслеживания...');
-      addLog(`👤 playerId: ${playerId || 'НЕТ!'}`);
-      addLog(`📍 currentPlayer: ${currentPlayer || 'НЕТ!'}`);
-
       if (onlineTrackingInterval) clearInterval(onlineTrackingInterval);
       if (onlineLoadInterval) clearInterval(onlineLoadInterval);
-      
-      // ПЕРВАЯ ОТПРАВКА СРАЗУ
-      if (navigator.geolocation && playerId) {
-        addLog('📡 Запрос геолокации...');
-        navigator.geolocation.getCurrentPosition(
-          pos => {
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
-            addLog(`📍 Координаты: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-            updateOnlineStatus(lat, lng);
-          },
-          (err) => {
-            addLog(`❌ Ошибка геолокации: ${err.message}`);
-          },
-          { enableHighAccuracy: true, timeout: 10000 }
-        );
-      } else {
-        addLog('❌ Геолокация или playerId отсутствуют');
-      }
-      
-      // ИНТЕРВАЛ
       onlineTrackingInterval = setInterval(() => {
         if (navigator.geolocation && playerId) {
-          addLog('📡 Обновление...');
           navigator.geolocation.getCurrentPosition(
             pos => {
-              const lat = pos.coords.latitude;
-              const lng = pos.coords.longitude;
-              addLog(`📍 Обновлено: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-              updateOnlineStatus(lat, lng);
+              updateOnlineStatus(pos.coords.latitude, pos.coords.longitude);
             },
-            (err) => {
-              addLog(`❌ Ошибка обновления: ${err.message}`);
-            },
-            { enableHighAccuracy: true, timeout: 10000 }
+            () => {},
+            { enableHighAccuracy: true, maximumAge: 5000 }
           );
-        } else {
-          addLog('❌ Нет доступа к геолокации');
         }
       }, 5000);
-      
       onlineLoadInterval = setInterval(loadOnlinePlayers, 5000);
       loadOnlinePlayers();
-      addLog('✅ Отслеживание запущено!');
-      addLog('📋 Лог сохранён в localStorage');
     }
 
     async function stopOnlineTracking() {
