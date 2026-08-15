@@ -330,7 +330,7 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ubWN2bW96Y2V5YXRjbXhtbm5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2OTg0NTksImV4cCI6MjEwMjI3NDQ1OX0.WswNX824baDjb05JAm8EJhmpIvmztsaqLyP3x4kevOo';
 
     // ============================================================
-    // ПЕРЕВОДЫ (сокращено для экономии места)
+    // ПЕРЕВОДЫ
     // ============================================================
     const LANG = {
       ru: {
@@ -612,7 +612,7 @@
     const SEGMENT_SIZE = 10;
 
     // ============================================================
-    // 22 ЗОНЫ (ПОЛНЫЙ СПИСОК)
+    // 22 ЗОНЫ
     // ============================================================
     const zonesData = [
       // Север (01-10)
@@ -1184,41 +1184,34 @@
         const points = getPoints(zone);
         const isHighlighted = highlightedZone === zone.id;
         
-        // Определяем цвет зоны
-        let color;
-        if (!isCaptured) {
-          color = '#666'; // серый для свободных зон
-        } else if (isMine) {
-          color = playerColor || '#2ecc71';
-        } else {
-          color = zone.ownerColor || '#e74c3c';
-        }
-
-        let fillColor, fillOpacity, weight, labelClass, dashArray;
+        let color, fillColor, fillOpacity, weight, labelClass, dashArray;
 
         if (!isCaptured) {
+          color = '#666666';
           fillColor = 'rgba(100,100,100,0.02)';
           fillOpacity = 0.02;
           weight = isHighlighted ? 5 : 2;
           labelClass = 'free';
           dashArray = '5, 5';
         } else if (isMine) {
+          color = playerColor || '#2ecc71';
           if (protected_) {
-            fillColor = color + '44';
-            fillOpacity = 0.25;
+            fillColor = 'rgba(46,204,113,0.2)';
+            fillOpacity = 0.2;
             weight = isHighlighted ? 6 : 4;
             labelClass = 'captured';
             dashArray = null;
           } else {
-            fillColor = '#f1c40f44';
+            fillColor = 'rgba(241,196,15,0.25)';
             fillOpacity = 0.25;
             weight = isHighlighted ? 6 : 4;
             labelClass = 'vulnerable';
             dashArray = null;
           }
         } else {
-          fillColor = color + '33';
-          fillOpacity = 0.2;
+          color = zone.ownerColor || '#e74c3c';
+          fillColor = 'rgba(231,76,60,0.15)';
+          fillOpacity = 0.15;
           weight = isHighlighted ? 5 : 3;
           labelClass = 'other';
           dashArray = null;
