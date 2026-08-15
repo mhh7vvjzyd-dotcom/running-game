@@ -1878,27 +1878,37 @@
     // ============================================================
     // ОНЛАЙН-ИГРОКИ (ПОКАЗ НА КАРТЕ)
     // ============================================================
+    // ============================================================
+    // ОНЛАЙН-ИГРОКИ (ПОКАЗ НА КАРТЕ) — С ОТЛАДКОЙ
+    // ============================================================
     let onlineMarkers = [];
     let onlineTrackingInterval = null;
     let onlineLoadInterval = null;
 
     async function updateOnlineStatus(lat, lng) {
-      if (!playerId) return;
+      console.log('📍 updateOnlineStatus вызвана!', lat, lng);
+      if (!playerId) {
+        console.log('❌ playerId нет, пропускаем');
+        return;
+      }
       try {
+        console.log('📤 Отправка координат в Supabase...');
         await supabase.query(`online_players?player_id=eq.${playerId}`, { method: 'DELETE' });
-        await supabase.post('online_players', {
+        const result = await supabase.post('online_players', {
           player_id: playerId,
           username: currentPlayer,
           color: playerColor,
           lat: lat,
           lng: lng
         });
+        console.log('✅ Координаты отправлены!', result);
       } catch (e) {
         console.error('❌ Ошибка отправки координат:', e);
       }
     }
 
     async function loadOnlinePlayers() {
+      console.log('🔄 loadOnlinePlayers вызвана');
       try {
         const now = new Date();
         const fifteenSecondsAgo = new Date(now.getTime() - 15000);
@@ -1907,10 +1917,17 @@
           { method: 'DELETE' }
         );
         const players = await supabase.query(`online_players?select=*`);
+        console.log('👥 Онлайн игроков:', players.length);
+        
         onlineMarkers.forEach(m => map.removeLayer(m));
         onlineMarkers = [];
+        
         players.forEach(p => {
-          if (p.player_id === playerId) return;
+          if (p.player_id === playerId) {
+            console.log('⏩ Пропускаем себя:', p.username);
+            return;
+          }
+          console.log('➕ Добавляем маркер для:', p.username);
           const marker = L.circleMarker([p.lat, p.lng], {
             radius: 12,
             color: p.color,
@@ -1927,21 +1944,31 @@
     }
 
     function startOnlineTracking() {
+      console.log('🚀 startOnlineTracking вызвана!');
       if (onlineTrackingInterval) clearInterval(onlineTrackingInterval);
       if (onlineLoadInterval) clearInterval(onlineLoadInterval);
+      
       onlineTrackingInterval = setInterval(() => {
+        console.log('⏳ Интервал отправки координат...');
         if (navigator.geolocation && playerId) {
           navigator.geolocation.getCurrentPosition(
             pos => {
+              console.log('📡 Получены координаты:', pos.coords.latitude, pos.coords.longitude);
               updateOnlineStatus(pos.coords.latitude, pos.coords.longitude);
             },
-            () => {},
+            (err) => {
+              console.error('❌ Ошибка геолокации:', err);
+            },
             { enableHighAccuracy: true, maximumAge: 5000 }
           );
+        } else {
+          console.log('❌ Геолокация или playerId отсутствуют');
         }
       }, 5000);
+      
       onlineLoadInterval = setInterval(loadOnlinePlayers, 5000);
       loadOnlinePlayers();
+      console.log('✅ startOnlineTracking запущена!');
     }
 
     async function stopOnlineTracking() {
