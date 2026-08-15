@@ -1155,6 +1155,7 @@
           polyline = L.polyline(route, { color: '#e74c3c', weight: 4, opacity: 0.9 }).addTo(map);
           map.setView(p, 15);
           updateUI();
+          updateCaptureProgress(); го
         },
         () => {},
         { enableHighAccuracy: true, maximumAge: 2000 }
@@ -1162,6 +1163,7 @@
     }
 
  function stopRun() {
+  document.getElementById('capture-progress').style.display = 'none';
   if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
   isRunning = false;
   actionBtn.textContent = t('start');
