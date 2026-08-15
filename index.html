@@ -1872,6 +1872,101 @@
     function closeAdminPanel() {
       document.getElementById('admin-panel').style.display = 'none';
     }
+
+    // ============================================================
+    // ОНЛАЙН-ИГРОКИ (ПОКАЗ НА КАРТЕ)
+    // ============================================================
+    let onlineMarkers = [];
+    let onlineTrackingInterval = null;
+    let onlineLoadInterval = null;
+
+    async function updateOnlineStatus(lat, lng) {
+      if (!playerId) return;
+      try {
+        await supabase.query(`online_players?player_id=eq.${playerId}`, { method: 'DELETE' });
+        await supabase.post('online_players', {
+          player_id: playerId,
+          username: currentPlayer,
+          color: playerColor,
+          lat: lat,
+          lng: lng
+        });
+      } catch (e) {
+        console.error('❌ Ошибка отправки координат:', e);
+      }
+    }
+
+    async function loadOnlinePlayers() {
+      try {
+        const now = new Date();
+        const fifteenSecondsAgo = new Date(now.getTime() - 15000);
+        await supabase.query(
+          `online_players?updated_at=lt.${fifteenSecondsAgo.toISOString()}`,
+          { method: 'DELETE' }
+        );
+        const players = await supabase.query(`online_players?select=*`);
+        onlineMarkers.forEach(m => map.removeLayer(m));
+        onlineMarkers = [];
+        players.forEach(p => {
+          if (p.player_id === playerId) return;
+          const marker = L.circleMarker([p.lat, p.lng], {
+            radius: 12,
+            color: p.color,
+            fillColor: p.color,
+            fillOpacity: 0.8,
+            weight: 3
+          }).addTo(map);
+          marker.bindPopup(`<b>👤 ${p.username}</b><br><span style="color:${p.color};">● Онлайн</span>`);
+          onlineMarkers.push(marker);
+        });
+      } catch (e) {
+        console.error('❌ Ошибка загрузки онлайн игроков:', e);
+      }
+    }
+
+    function startOnlineTracking() {
+      if (onlineTrackingInterval) clearInterval(onlineTrackingInterval);
+      if (onlineLoadInterval) clearInterval(onlineLoadInterval);
+      onlineTrackingInterval = setInterval(() => {
+        if (navigator.geolocation && playerId) {
+          navigator.geolocation.getCurrentPosition(
+            pos => {
+              updateOnlineStatus(pos.coords.latitude, pos.coords.longitude);
+            },
+            () => {},
+            { enableHighAccuracy: true, maximumAge: 5000 }
+          );
+        }
+      }, 5000);
+      onlineLoadInterval = setInterval(loadOnlinePlayers, 5000);
+      loadOnlinePlayers();
+    }
+
+    async function stopOnlineTracking() {
+      if (onlineTrackingInterval) {
+        clearInterval(onlineTrackingInterval);
+        onlineTrackingInterval = null;
+      }
+      if (onlineLoadInterval) {
+        clearInterval(onlineLoadInterval);
+        onlineLoadInterval = null;
+      }
+      if (playerId) {
+        try {
+          await supabase.query(`online_players?player_id=eq.${playerId}`, { method: 'DELETE' });
+        } catch (e) {}
+      }
+      onlineMarkers.forEach(m => map.removeLayer(m));
+      onlineMarkers = [];
+    }
+
+    window.addEventListener('beforeunload', async () => {
+      if (playerId) {
+        try {
+          await supabase.query(`online_players?player_id=eq.${playerId}`, { method: 'DELETE' });
+        } catch (e) {}
+      }
+    });
   </script>
 </body>
 </html>
