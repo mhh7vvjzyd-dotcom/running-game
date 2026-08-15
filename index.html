@@ -483,6 +483,10 @@
     const SUPABASE_ANON_KEY = 'sb_publishable_YC1bnXLPq4bn3a_DpjE6xw_Vp3MdP1v';
 
     // ============================================================
+    // АДМИН - СКРЫТЫЙ ИГРОК (НЕ ПОКАЗЫВАЕТСЯ В ТАБЛИЦЕ)
+    // ============================================================
+    const ADMIN_USERNAME = 'Админ';
+    // ============================================================
     // ПЕРЕВОДЫ
     // ============================================================
     const LANG = {
@@ -758,10 +762,24 @@
     async function loadGameData() {
       try {
         const captures = await getCaptures();
+        const players = await getPlayers();
+        
+        // Создаём карту игроков по id
+        const playerMap = {};
+        players.forEach(p => {
+          playerMap[p.id] = { username: p.username, color: p.color };
+        });
+
         captures.forEach(c => {
           const zone = zonesData.find(z => z.id === c.zone_id);
           if (zone) {
+            // Проверяем, не админ ли захватил зону
+            const player = playerMap[c.player_id];
+            if (player && player.username === 'Админ') {
+              return; // Пропускаем зоны админа
+            }
             zone.owner = c.player_id === playerId ? 'me' : c.player_id;
+            zone.ownerColor = playerMap[c.player_id]?.color || '#e74c3c';
             zone.capturedAt = c.captured_at || Date.now();
           }
         });
@@ -770,7 +788,6 @@
         console.warn('⚠️ Ошибка загрузки данных:', e);
       }
     }
-
     // ============================================================
     // КОНСТАНТЫ
     // ============================================================
