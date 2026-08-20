@@ -1639,12 +1639,7 @@
         return;
       }
 
-      const first = route[0];
-      const last = route[route.length - 1];
-      if (map.distance(first, last) >= 50) {
-        alert(t('notClosed'));
-        return;
-      }
+      
 
       let captured = false;
 
